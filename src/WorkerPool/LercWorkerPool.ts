@@ -19,7 +19,7 @@ export class LercWorkerPool {
 
   constructor(poolSize = navigator.hardwareConcurrency || 4) {
     for (let i = 0; i < poolSize; i++) {
-      const worker = new LercWorker({ type: 'module' })
+      const worker = new LercWorker({ type: 'module' } as WorkerOptions)
       worker.onmessage = (e) => this.handleMessage(worker, e)
       worker.onerror = (err) => console.error('LERC Worker error:', err)
       this.workers.push(worker)
