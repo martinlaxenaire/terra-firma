@@ -1,11 +1,10 @@
 import { gsap } from 'gsap'
 import { GPUDeviceManager, GPUCameraRenderer, Vec3, DirectionalLight } from 'gpu-curtains'
+import type { GPUCameraRendererParams } from 'gpu-curtains'
 import { GlobeOrbitControls } from './controls/GlobeOrbitControls.js'
 
 import TilesManager from './TilesManager/TilesManager.js'
 import type { POI, TilesManagerBaseConfig, TilesManagerBaseOptions } from './TilesManager/TilesManager.js'
-
-import { providersKeys } from './providers-keys.js'
 
 // only for gui
 import { defaultTilesConfig, defaultTilesProviders } from './config/config.js'
@@ -17,7 +16,7 @@ import { Sky } from './Sky/Sky.js'
 
 export interface TerraFirmaBaseOptions extends TilesManagerBaseConfig {
   renderer: Omit<
-    GPUCameraRenderer['options'],
+    GPUCameraRendererParams,
     'camera' | 'deviceManager' | 'container' | 'autoResize' | 'context' | 'renderPass'
   >
 }
@@ -206,7 +205,6 @@ export default class TerraFirma {
     console.log(this)
 
     const basicOptions: TilesManagerBaseOptions = {
-      providersAPIKeys: providersKeys,
       useFog: this.options.useFog ?? false,
       useWorkers: this.options.useWorkers ?? false,
       parent: this.scene,

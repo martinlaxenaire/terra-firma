@@ -1,0 +1,61 @@
+import { MediaTexture, Mesh, Object3D, Vec3 } from 'gpu-curtains';
+import * as tilebelt from '@mapbox/tilebelt';
+import TilesManager from '../TilesManager/TilesManager.js';
+import MapTile from './MapTile.js';
+import ElevationTileTexture from '../TileTextures/ElevationTileTexture.js';
+import SatelliteTileTexture from '../TileTextures/SatelliteTileTexture.js';
+import { TileGeometry } from './TileGeometry.js';
+export interface TileMeshOptions {
+    tilesManager: TilesManager;
+    mapTile: MapTile;
+    elevationTile: ElevationTileTexture;
+    satelliteTile: SatelliteTileTexture;
+    tile?: tilebelt.Tile;
+    definition?: number;
+    parent: Object3D;
+    visible?: boolean;
+    onMeshReady?: () => void;
+}
+export default class TileMesh {
+    tilesManager: TilesManager;
+    renderer: TilesManager['renderer'];
+    mapTile: MapTile;
+    zoom: number;
+    elevationTile: ElevationTileTexture;
+    satelliteTile: SatelliteTileTexture;
+    tile: tilebelt.Tile;
+    ready: boolean;
+    readyCallbackRegistered: boolean;
+    visible: boolean;
+    tileBBox: number[];
+    definition: number;
+    position: Vec3;
+    tileCenter: {
+        longitude: number;
+        latitude: number;
+    };
+    parent: Object3D;
+    elevationTexture: MediaTexture | undefined;
+    satelliteTexture: MediaTexture | undefined;
+    mesh: Mesh | undefined;
+    geometry: TileGeometry | undefined;
+    onMeshReady: () => void;
+    constructor({ tilesManager, mapTile, tile, elevationTile, satelliteTile, definition, parent, visible, onMeshReady, }: TileMeshOptions);
+    setTextures(): void;
+    setElevationTextureTransform(): void;
+    updateElevationTexture(): void;
+    updateSatelliteTexture(): void;
+    setGeometry(): void;
+    getMetersPerPixel(z: number, y: number, tileSize?: number): number;
+    resetElevationTextureZoomLevel(): void;
+    setMesh(): void;
+    setVisibility(visible?: boolean): void;
+    setGlobalOpacity(opacity?: number): void;
+    setSunLight(useSunLight?: boolean): void;
+    setSunShadows(useSunShadows?: boolean): void;
+    setFog(useFog?: boolean): void;
+    setDebugZoom(debugZoom?: boolean): void;
+    setDebugElevation(debugElevation?: boolean): void;
+    setPosition(position?: Vec3): void;
+    destroy(): void;
+}

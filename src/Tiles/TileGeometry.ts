@@ -1,4 +1,4 @@
-import { PlaneGeometry } from 'gpu-curtains'
+import { Geometry, PlaneGeometry, VertexBufferAttributeParams } from 'gpu-curtains'
 
 export class TileGeometry extends PlaneGeometry {
   constructor({ widthSegments = 1, heightSegments = 1, instancesCount = 1, vertexBuffers = [] } = {}) {
@@ -61,17 +61,15 @@ export class TileGeometry extends PlaneGeometry {
     return perimeter
   }
 
-  getIndexedVerticesAndUVs() {
+  getIndexedVerticesAndUVs(verticesCount: Geometry['verticesCount']): Record<string, VertexBufferAttributeParams> {
     const width = this.definition.width
     const height = this.definition.height
 
     const gridWidth = width + 1
-    const gridHeight = height + 1
-    const gridVertexCount = gridWidth * gridHeight
 
     const perimeter = this.getPerimeterIndices()
     const perimeterVertexCount = perimeter.length
-    const totalVertexCount = gridVertexCount + perimeterVertexCount
+    const totalVertexCount = verticesCount + perimeterVertexCount
 
     const uv = {
       name: 'uv',
@@ -143,12 +141,12 @@ export class TileGeometry extends PlaneGeometry {
       const xIndex = originalIndex % gridWidth
       const yIndex = Math.floor(originalIndex / gridWidth)
 
-      const duplicateIndex = gridVertexCount + i
+      const duplicateIndex = verticesCount + i
 
       writeVertex(duplicateIndex, xIndex, yIndex, true)
     }
 
-    return { position, uv, normal, skirt }
+    return { position, uv, normal, skirt } as Record<string, VertexBufferAttributeParams>
   }
 
   setIndexArray() {
