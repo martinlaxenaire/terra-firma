@@ -1,0 +1,21 @@
+{
+  "name": "terra-firma",
+  "version": "0.0.1",
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  },
+  "dependencies": {
+    "@mapbox/tilebelt": "^2.0.3",
+    "gpu-curtains": "0.17.5",
+    "gsap": "^3.15.1",
+    "lerc": "^4.2.0",
+    "lil-gui": "^0.21.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "dev:https": "vite --host --mode https"
+  }
+}
