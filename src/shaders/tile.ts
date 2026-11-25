@@ -2,7 +2,6 @@ import { globeHelpers } from './chunks/globe-helpers.js'
 import { elevationHelpers } from './chunks/elevation-helpers.js'
 import { atmosphericConstants } from './chunks/atmospheric-constants.js'
 import { calculateAerialPerspective } from './chunks/calculate-aerial-perspective.js'
-import { common, constants, toneMappingUtils } from 'gpu-curtains'
 
 export const tileVs = /* wgsl */ `
   ${globeHelpers}
@@ -94,10 +93,6 @@ export const tileVs = /* wgsl */ `
 `
 
 export const tileFs = /* wgsl */ `
-  ${constants}
-  ${common}
-  ${toneMappingUtils}
-
   ${elevationHelpers}
 
   struct VSOutput {
@@ -149,8 +144,6 @@ export const tileFs = /* wgsl */ `
     }
 
     var color: vec4f = textureSample(satelliteTexture, satelliteSampler, fsInput.uv);
-
-    color = sRGBToLinear_4(color);
 
     let radialNormal = normalize(fsInput.normal);
     let sunDir = normalize(globe.sunPosition);
@@ -216,9 +209,6 @@ export const tileFs = /* wgsl */ `
 
       color.rgb = color.rgb * terrainTransmittance + terrainInScattering;
     }
-
-    color.rgb = KhronosToneMapping(color.rgb * exposure);
-    color = linearTosRGB_4(color);
 
     if(debug.debugZoom == 1) {
       color.rgb = vec3(f32(tile.current[2].element) / 20.0, f32(debug.elevationZoom) / 20.0, 0.0);

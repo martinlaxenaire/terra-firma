@@ -62,6 +62,7 @@ export default class SatelliteTileTexture {
     this.texture = new MediaTexture(this.renderer, {
       label: `Satellite texture [${this.tile[0]}, ${this.tile[1]}, ${this.tile[2]}]`,
       name: 'satelliteTexture',
+      format: 'rgba8unorm-srgb',
       generateMips: true,
       autoDestroy: false,
       useTransform: false,

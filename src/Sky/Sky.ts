@@ -25,6 +25,7 @@ export class Sky {
     const starsMap = new MediaTexture(this.renderer, {
       label: 'Stars map',
       name: 'starsMap',
+      format: 'rgba8unorm-srgb',
     })
 
     // https://svs.gsfc.nasa.gov/3572/

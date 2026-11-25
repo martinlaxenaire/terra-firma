@@ -29,26 +29,60 @@ window.addEventListener('load', async () => {
 
   await terraFirma.init()
 
-  const everestBaseCamp = await terraFirma.getPoint3DPosition({
+  const everestBaseCampPosition = await terraFirma.getPoint3DPosition({
     latitude: 28.0072,
     longitude: 86.8594,
   })
 
-  const sphere = new LitMesh(terraFirma.renderer, {
+  const baseCamp = new LitMesh(terraFirma.renderer, {
     geometry: new SphereGeometry(),
     depthCompare: 'greater',
     material: {
-      color: new Vec3(1, 0, 0),
+      color: new Vec3(0, 1, 0),
       shading: 'Unlit',
     },
   })
 
-  sphere.scale.set(200)
-  sphere.position.copy(everestBaseCamp)
+  baseCamp.scale.set(100)
+  baseCamp.position.copy(everestBaseCampPosition)
 
   terraFirma.setCamera({
-    target: everestBaseCamp,
+    target: everestBaseCampPosition,
   })
+
+  const everestCamp1Position = await terraFirma.getPoint3DPosition({
+    latitude: 27.9825,
+    longitude: 86.884,
+  })
+
+  const camp1 = new LitMesh(terraFirma.renderer, {
+    geometry: new SphereGeometry(),
+    depthCompare: 'greater',
+    material: {
+      color: new Vec3(1, 1, 0),
+      shading: 'Unlit',
+    },
+  })
+
+  camp1.scale.set(100)
+  camp1.position.copy(everestCamp1Position)
+
+  const everestCamp4Position = await terraFirma.getPoint3DPosition({
+    latitude: 27.975,
+    longitude: 86.9321,
+  })
+
+  const camp4 = new LitMesh(terraFirma.renderer, {
+    geometry: new SphereGeometry(),
+    depthCompare: 'greater',
+    material: {
+      color: new Vec3(0, 1, 1),
+      shading: 'Unlit',
+    },
+  })
+
+  camp4.scale.set(100)
+  camp4.position.copy(everestCamp4Position)
 
   const gui = new GUI()
   //gui.close()

@@ -189,7 +189,7 @@ export const analyzePointElevation = (
 
   if (!canvas || !context) return 0
 
-  const fraction = [Math.round(tileFraction[0] * canvas.width), Math.round(tileFraction[1] * canvas.height)]
+  const fraction = [Math.floor(tileFraction[0] * canvas.width), Math.floor(tileFraction[1] * canvas.height)]
   const { data } = context.getImageData(fraction[0], fraction[1], 1, 1)
 
   if (data.length > 3) {

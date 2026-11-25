@@ -30,9 +30,9 @@ export const defaultTilesConfig: TerraFirmaBaseOptions = {
   providers: defaultTilesProviders,
   minTileDefinition: 15,
   renderer: {
-    hdrRendering: false,
-    toneMapping: false,
-    colorSpace: 'linear',
+    hdrRendering: true,
+    toneMapping: 'Khronos',
+    colorSpace: 'srgb',
     lights: {
       maxAmbientLights: 1,
       maxDirectionalLights: 1,

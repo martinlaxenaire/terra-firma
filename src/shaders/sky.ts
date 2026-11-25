@@ -1,11 +1,8 @@
-import { constants, common, toneMappingUtils } from 'gpu-curtains'
 import { atmosphericConstants } from './chunks/atmospheric-constants.js'
 import { calculateAerialPerspective } from './chunks/calculate-aerial-perspective.js'
 
 export const skyFs = `
-  ${constants}
-  ${common}
-  ${toneMappingUtils}
+  const PI = ${Math.PI};
 
   ${atmosphericConstants}
   ${calculateAerialPerspective}
@@ -159,8 +156,6 @@ export const skyFs = `
     if (groundHit.x <= 0.0) {
         hdrColor += calculateSun(rayDirection, sunDirection);
 
-        stars = sRGBToLinear(stars);
-
         // Measure how bright the scattered sky is in this direction
         let skyLuminance = dot(skyPerspective.inScattering, vec3f(0.2126, 0.7152, 0.0722));
         // Suppress stars when the sky is bright (simulates camera exposure adaptation).
@@ -171,9 +166,6 @@ export const skyFs = `
         hdrColor += stars * skyPerspective.transmittance * starVisibility * starIntensity;
     }
 
-    var atmosphericSky = KhronosToneMapping(hdrColor);
-    atmosphericSky = linearTosRGB(atmosphericSky);
-
-    return vec4f(atmosphericSky, 1.0);
+    return vec4f(hdrColor, 1.0);
   }
 `

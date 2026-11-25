@@ -361,9 +361,23 @@ export default class TilesManager {
     const tile = tilebelt.pointToTile(point.longitude, point.latitude, this.zooms.max.elevation - 2)
 
     const cached = tilesElevationsCache.getSource(tile)
-    if (cached !== undefined) return cached.max
+    if (cached !== undefined && !exactAltitude) return cached.max
 
-    const rasterTile = await this.getValidElevationTile(tile)
+    const sourceCache = tilesSourcesCache.getSource({ tile, type: 'elevation', provider: this.providers.elevation })
+
+    let rasterTile: GetRasterTile | undefined
+
+    if (sourceCache?.source) {
+      rasterTile = {
+        source: sourceCache.source,
+        metadata: cached,
+        valid: true,
+      }
+    }
+
+    if (!rasterTile?.source) {
+      rasterTile = await this.getValidElevationTile(tile)
+    }
 
     if (rasterTile) {
       if (rasterTile.metadata) {
