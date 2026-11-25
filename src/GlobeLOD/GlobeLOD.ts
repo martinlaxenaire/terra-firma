@@ -286,8 +286,8 @@ export class GlobeLOD {
     // Distance to the NEAREST edge of the tile's footprint (0 if directly over/inside the tile)
     const closestHorizontalDist = Math.max(0, horizontalDist - tileHalfSpan)
 
-    // Minimum safe floor (e.g., 25m) prevents division-by-zero / zoom-20 runaway while letting peaks reach zoom 15-16
-    return Math.max(25, Math.hypot(closestHorizontalDist, verticalDist))
+    // Minimum safe floor (e.g., 10m) prevents division-by-zero / zoom-20 runaway while letting peaks reach zoom 15-16
+    return Math.max(10, Math.hypot(closestHorizontalDist, verticalDist))
   }
 
   private getScreenSpaceError(tile: GlobeTile, visibility: GlobeVisibilityResult): number {
@@ -324,10 +324,10 @@ export class GlobeLOD {
     const verticalHeight = this.earthRadius * Math.abs(globeNorth - globeSouth)
     const tileWidth = Math.max(horizontalWidth, verticalHeight)
 
-    // Boost mid-distance tiles (5km - 60km) without changing closest tiles (< 1.5km) or far horizon (> 150km)
+    // Boost mid-distance tiles (5km - 100km) without changing closest tiles (< 1.5km) or far horizon (> 150km)
     const midNear = smoothstep(1_500, 5_000, distance) // 0 at close range -> 1 by 5 km
-    const midFar = 1.0 - smoothstep(40_000, 140_000, distance) // 1 at 40 km -> 0 by 140 km
-    const midRangeBoost = 1.0 + 1.0 * (midNear * midFar) // Up to 2x SSE in the mid-distance
+    const midFar = 1.0 - smoothstep(60_000, 150_000, distance) // 1 at 60 km -> 0 by 150 km
+    const midRangeBoost = 1.0 + 2.0 * (midNear * midFar) // Up to 3x SSE in the mid-distance
 
     const toScreenSpace = (worldSize: number) => ((worldSize * focalLength) / distance) * foreshortening * midRangeBoost
 

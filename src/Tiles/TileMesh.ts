@@ -1,4 +1,4 @@
-import { MediaTexture, Mesh, Object3D, Sampler, Vec3 } from 'gpu-curtains'
+import { MediaTexture, Mesh, Object3D, Sampler, Vec3, sRGBToLinear } from 'gpu-curtains'
 import * as tilebelt from '@mapbox/tilebelt'
 import { getTileBBoxCenterCoords } from '../utils/map.js'
 import { tilesGeometriesCache } from '../caches/tiles-geometries-cache.js'
@@ -268,15 +268,19 @@ export default class TileMesh {
             },
             sunset: {
               type: 'vec3f',
-              value: new Vec3(1.04, 0.94, 0.86),
+              value: sRGBToLinear(new Vec3(1.04, 0.94, 0.86)),
             },
             nightBase: {
               type: 'vec3f',
-              value: new Vec3(0.012, 0.016, 0.025),
+              value: sRGBToLinear(new Vec3(0.032, 0.042, 0.055)),
             },
             nightTint: {
               type: 'vec3f',
-              value: new Vec3(0.16, 0.19, 0.26),
+              value: sRGBToLinear(new Vec3(0.32, 0.37, 0.48)),
+            },
+            nightSky: {
+              type: 'vec3f',
+              value: sRGBToLinear(new Vec3(0.04, 0.06, 0.1)),
             },
           },
         },

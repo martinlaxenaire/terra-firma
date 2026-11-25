@@ -9,7 +9,7 @@ import { tilesTextureCache } from '../caches/tiles-texture-cache.js'
 import { tilesElevationsCache } from '../caches/tiles-elevations-cache.js'
 import { taskQueueScheduler } from '../core/task-queue-scheduler.js'
 import { defaultTilesConfig } from '../config/config.js'
-import { tilesAPI } from '../core/tiles-api.js'
+import { GetRasterTile, tilesAPI } from '../core/tiles-api.js'
 import { tilesGeometriesCache } from '../caches/tiles-geometries-cache.js'
 import { tilesSourcesCache } from '../caches/tiles-sources-cache.js'
 import {
@@ -336,6 +336,21 @@ export default class TilesManager {
     }
   }
 
+  async getValidElevationTile(tile: tilebelt.Tile): Promise<GetRasterTile | undefined> {
+    const rasterTile = await tilesAPI.getRasterTile({
+      tile,
+      tileType: 'elevation',
+      provider: this.providers.elevation,
+    })
+
+    if (rasterTile.valid) {
+      return rasterTile
+    } else if (tile[2] > 2) {
+      const parentTile = tilebelt.getParent(tile)
+      return await this.getValidElevationTile(parentTile)
+    }
+  }
+
   async getPointAltitude(
     point: GeographicCoordinates = {
       latitude: 0,
@@ -348,11 +363,7 @@ export default class TilesManager {
     const cached = tilesElevationsCache.getSource(tile)
     if (cached !== undefined) return cached.max
 
-    const rasterTile = await tilesAPI.getRasterTile({
-      tile,
-      tileType: 'elevation',
-      provider: this.providers.elevation,
-    })
+    const rasterTile = await this.getValidElevationTile(tile)
 
     if (rasterTile) {
       if (rasterTile.metadata) {
@@ -364,7 +375,12 @@ export default class TilesManager {
         const fraction: tilebelt.Tile = [tileFraction[0] - tile[0], tileFraction[1] - tile[1], tile[2]]
 
         if (rasterTile.source) {
-          return analyzePointElevation(rasterTile.source, fraction, this.providers.elevation.encoding)
+          const pointElevation = analyzePointElevation(rasterTile.source, fraction, this.providers.elevation.encoding)
+          if (pointElevation >= 0) {
+            return pointElevation
+          } else {
+            return rasterTile.metadata?.max ?? 0
+          }
         }
 
         return 0

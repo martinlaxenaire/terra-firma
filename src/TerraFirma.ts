@@ -59,7 +59,7 @@ export default class TerraFirma {
   constructor(options: TerraFirmaOptions) {
     this.options = options
     this.options.providers = options.providers ?? defaultTilesProviders
-    this.options.useFog = options.useFog ?? false
+    this.options.useFog = options.useFog ?? true
     this.options.useSky = options.useSky ?? true
     this.options.useWorkers = options.useWorkers ?? false
     const defaultCameraOffset = { north: -4_000, west: 0, altitude: 2_000 }

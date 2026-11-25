@@ -1,9 +1,15 @@
 import { globeHelpers } from './chunks/globe-helpers.js'
 import { elevationHelpers } from './chunks/elevation-helpers.js'
+import { atmosphericConstants } from './chunks/atmospheric-constants.js'
+import { calculateAerialPerspective } from './chunks/calculate-aerial-perspective.js'
+import { common, constants, toneMappingUtils } from 'gpu-curtains'
 
 export const tileVs = /* wgsl */ `
   ${globeHelpers}
   ${elevationHelpers}
+
+  ${atmosphericConstants}
+  ${calculateAerialPerspective}
 
   struct VSOutput {
     @builtin(position) position: vec4f,
@@ -12,6 +18,8 @@ export const tileVs = /* wgsl */ `
     @location(2) elevationUv: vec2f,
     @location(3) worldPosition: vec3f,
     @location(4) elevation: f32,
+    @location(5) aerialInScattering: vec3f,
+    @location(6) aerialTransmittance: vec3f,
   };
 
   @vertex fn main(
@@ -56,11 +64,40 @@ export const tileVs = /* wgsl */ `
     vsOutput.worldPosition =
         worldPosition.xyz / worldPosition.w;
 
+    if (params.useFog == 1) {
+        let toVertex = vsOutput.worldPosition - camera.position;
+        let distanceToVertex = length(toVertex);
+        let rayDirection = toVertex / max(distanceToVertex, 0.0001);
+        let sunDir = normalize(globe.sunPosition);
+
+        // No need for screen-space jitter when smoothly interpolated across triangles!
+        let aerial = calculateAerialPerspective(
+            camera.position,
+            rayDirection,
+            distanceToVertex,
+            sunDir,
+            globe.earthRadius,
+            0.0,
+            4u,
+            false
+        );
+
+        vsOutput.aerialInScattering = aerial.inScattering;
+        vsOutput.aerialTransmittance = aerial.transmittance;
+    } else {
+        vsOutput.aerialInScattering = vec3f(0.0);
+        vsOutput.aerialTransmittance = vec3f(1.0);
+    }
+
     return vsOutput;
   }
 `
 
 export const tileFs = /* wgsl */ `
+  ${constants}
+  ${common}
+  ${toneMappingUtils}
+
   ${elevationHelpers}
 
   struct VSOutput {
@@ -70,6 +107,8 @@ export const tileFs = /* wgsl */ `
     @location(2) elevationUv: vec2f,
     @location(3) worldPosition: vec3f,
     @location(4) elevation: f32,
+    @location(5) aerialInScattering: vec3f,
+    @location(6) aerialTransmittance: vec3f,
   };
 
   // Helper: Compute world-space terrain normal from Terrarium DEM texture
@@ -111,6 +150,8 @@ export const tileFs = /* wgsl */ `
 
     var color: vec4f = textureSample(satelliteTexture, satelliteSampler, fsInput.uv);
 
+    color = sRGBToLinear_4(color);
+
     let radialNormal = normalize(fsInput.normal);
     let sunDir = normalize(globe.sunPosition);
 
@@ -119,38 +160,37 @@ export const tileFs = /* wgsl */ `
     let dayFactor = smoothstep(-0.16, 0.14, sunDot);
 
     var finalHillshade = 1.0;
-
-    if(params.useSunLight == 1 && params.useSunShadows == 1) {
-      // 2. Terrain hillshade from Terrarium DEM
-      let terrainNormal = getTerrainWorldNormal(
-        elevationTexture,
-        elevationSampler,
-        fsInput.elevationUv,
-        radialNormal,
-        tile.metersPerPixel,
-        1.1 // Vertical exaggeration (1.0 = true scale, 1.5–2.0 = crisp cartographic relief)
-      );
-
-      // Signed difference between terrain slope lighting and flat ground (-1.0 to +1.0)
-      // Negative = facing away from sun, 0.0 = flat plain, Positive = facing sun
-      let slopeDelta = dot(terrainNormal, sunDir) - sunDot;
-
-      // Soft S-curve transition (no hard clamp edges or 0.0 cutoff!)
-      // Ease smoothly from shaded slope (-0.45) through flat plain (0.0) to sunlit slope (+0.45)
-      let softSlope = smoothstep(-0.45, 0.45, slopeDelta);
-      let hillshade = mix(0.72, 1.28, softSlope);
-
-      // Fade out hillshade smoothly near the terminator so night side stays clean
-      let reliefStrength = smoothstep(-0.05, 0.15, sunDot);
-      finalHillshade = mix(1.0, hillshade, reliefStrength * 0.65);
-    }
-
-    var fogColor = vec4(colors.fog, 1.0);
+    let exposure = mix(1.2, 1.0, dayFactor);
 
     if(params.useSunLight == 1) {
+      if(params.useSunShadows == 1) {
+        // 2. Terrain hillshade from Terrarium DEM
+        let terrainNormal = getTerrainWorldNormal(
+          elevationTexture,
+          elevationSampler,
+          fsInput.elevationUv,
+          radialNormal,
+          tile.metersPerPixel,
+          1.1 // Vertical exaggeration (1.0 = true scale, 1.5–2.0 = crisp cartographic relief)
+        );
+
+        // Signed difference between terrain slope lighting and flat ground (-1.0 to +1.0)
+        // Negative = facing away from sun, 0.0 = flat plain, Positive = facing sun
+        let slopeDelta = dot(terrainNormal, sunDir) - sunDot;
+
+        // Soft S-curve transition (no hard clamp edges or 0.0 cutoff!)
+        // Ease smoothly from shaded slope (-0.45) through flat plain (0.0) to sunlit slope (+0.45)
+        let softSlope = smoothstep(-0.45, 0.45, slopeDelta);
+        let hillshade = mix(0.72, 1.28, softSlope);
+
+        // Fade out hillshade smoothly near the terminator so night side stays clean
+        let reliefStrength = smoothstep(-0.05, 0.15, sunDot);
+        finalHillshade = mix(1.0, hillshade, reliefStrength * 0.65);
+      }
+
       // 3. Base winter-sun intensity + sunset glow
       let wrapDiffuse = clamp((sunDot + 0.15) / 1.15, 0.0, 1.0);
-      let sunIntensity = mix(0.45, 1.05, pow(wrapDiffuse, 0.75)) * finalHillshade;
+      let sunIntensity = mix(0.45, 1.2, pow(wrapDiffuse, 0.75)) * finalHillshade;
 
       let horizonGlow = exp(-pow((sunDot + 0.02) * 10.5, 2.0));
       let subtleTint = mix(vec3f(1.0), colors.sunset, horizonGlow * 0.45);
@@ -161,31 +201,24 @@ export const tileFs = /* wgsl */ `
 
       // Smoothly blend night ambient into day lighting
       color.rgb = mix(nightAmbient, max(dayLit, nightAmbient), dayFactor);
-
-      let nightFogAmbient = fogColor.rgb * colors.nightTint + colors.nightBase;
-      let dayFogLit = max(fogColor.rgb * sunIntensity * subtleTint, nightFogAmbient * 1.15);
-
-      // Smoothly blend night ambient into day lighting
-      fogColor.rgb = mix(nightFogAmbient, max(dayFogLit, nightFogAmbient), dayFactor);
     }
 
     if(params.useFog == 1) {
-      let distanceToCamera = distance(
-        fsInput.worldPosition,
-        camera.position
-      );
+      // Tune between 0.25 (crisp map) and 1.0 (full physical haze)
+      let hazeStrength = 0.25;
+      let nightHazeStrength = 0.5;
 
-      let fogDensity: f32 = 1.0;
-      let fogFactor: f32 = smoothstep( params.fogNear, params.fogFar, distanceToCamera );
+      let effectiveHaze = mix(nightHazeStrength, hazeStrength, dayFactor);
 
-      let scalar: f32 = fogFactor * fogDensity;
-      let fog: f32 = 1.0 - exp(-(scalar * scalar));
+      // Blend transmittance toward 1.0 (less attenuation) and scale down inScattering
+      let terrainTransmittance = mix(vec3f(1.0), fsInput.aerialTransmittance, effectiveHaze);
+      let terrainInScattering = fsInput.aerialInScattering * effectiveHaze;
 
-      color = mix(color, fogColor, fog);
-
-      // color = mix( color, vec4(colors.fog, 1.0), fogFactor );
-      // color.rgb = vec3(depth);
+      color.rgb = color.rgb * terrainTransmittance + terrainInScattering;
     }
+
+    color.rgb = KhronosToneMapping(color.rgb * exposure);
+    color = linearTosRGB_4(color);
 
     if(debug.debugZoom == 1) {
       color.rgb = vec3(f32(tile.current[2].element) / 20.0, f32(debug.elevationZoom) / 20.0, 0.0);

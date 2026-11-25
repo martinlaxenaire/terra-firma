@@ -1,4 +1,4 @@
-import { FullscreenPlane, GPUCameraRenderer, Mat4, MediaTexture, Vec3 } from 'gpu-curtains'
+import { FullscreenPlane, GPUCameraRenderer, Mat4, MediaTexture, Vec3, sRGBToLinear } from 'gpu-curtains'
 import { EARTH_RADIUS } from '../config/constants.js'
 import { skyFs } from '../shaders/sky.js'
 
@@ -41,7 +41,7 @@ export class Sky {
           struct: {
             viewSamples: {
               type: 'u32',
-              value: 16,
+              value: 8,
             },
           },
         },
@@ -62,6 +62,14 @@ export class Sky {
             inverseViewProjectionMatrix: {
               type: 'mat4x4f',
               value: new Mat4().multiplyMatrices(this.camera.projectionMatrix, this.camera.viewMatrix).invert(),
+            },
+          },
+        },
+        colors: {
+          struct: {
+            nightSky: {
+              type: 'vec3f',
+              value: sRGBToLinear(new Vec3(0.04, 0.06, 0.1)),
             },
           },
         },

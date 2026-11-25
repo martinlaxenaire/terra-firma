@@ -14,8 +14,8 @@ window.addEventListener('load', async () => {
     //   longitude: 0,
     // },
     // poi: {
-    //   latitude: 35.68,
-    //   longitude: 139.69,
+    //   latitude: -31.5372,
+    //   longitude: -68.5253,
     // },
     // cameraOffset: {
     //   north: 0,
@@ -82,16 +82,16 @@ window.addEventListener('load', async () => {
   const skyFolder = mapFolder.addFolder('Sky')
 
   skyFolder
-    .add({ useSky: true }, 'useSky')
+    .add({ useSky: terraFirma.options.useSky }, 'useSky')
     .onChange((value) => {
       terraFirma.useSky(value)
     })
     .name('Display sky')
 
-  skyFolder.add(terraFirma.sky.mesh.uniforms.params.viewSamples, 'value', 8, 32, 1).name('View samples')
+  skyFolder.add(terraFirma.sky.mesh.uniforms.params.viewSamples, 'value', 2, 20, 1).name('View samples')
 
   mapFolder
-    .add({ useFog: false }, 'useFog')
+    .add({ useFog: terraFirma.options.useFog }, 'useFog')
     .onChange((value) => {
       terraFirma.useFog(value)
     })
