@@ -177,7 +177,8 @@ export const tilesProviders: TilesProviders = {
       maxZoom: 19,
       key: '',
       getTile: (tile) => {
-        return `https://wxs.ign.fr/essentiels/geoportail/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIXSET=PM&TILEMATRIX=${tile[2]}&TILECOL=${tile[0]}&TILEROW=${tile[1]}&STYLE=normal&FORMAT=image/jpeg`
+        return `https://data.geopf.fr/wmts?gp-ol-ext=1.0.0-beta.16-644&layer=ORTHOIMAGERY.ORTHOPHOTOS&style=normal&tilematrixset=PM_0_19&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix=${tile[2]}&TILECOL=${tile[0]}&TILEROW=${tile[1]}`
+        // return `https://wxs.ign.fr/essentiels/geoportail/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIXSET=PM&TILEMATRIX=${tile[2]}&TILECOL=${tile[0]}&TILEROW=${tile[1]}&STYLE=normal&FORMAT=image/jpeg`
       },
     },
     google: {

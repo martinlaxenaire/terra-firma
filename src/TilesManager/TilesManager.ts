@@ -30,7 +30,7 @@ export interface POI extends GeographicCoordinates {
 
 export interface TilesManagerBaseConfig {
   providers: TilesProviders
-  minTileDefinition?: number
+  maxTileDefinition?: number
   lod?: GlobeLODBaseOptions
   cameraVisibility?: GlobeCameraVisibilityBaseOptions
 }
@@ -188,8 +188,8 @@ export default class TilesManager {
   }
 
   getDefinitionAtZoomLevel(zoom = 10) {
-    // minTileDefinition default to 15
-    return Math.max(30, zoom * this.options.minTileDefinition!)
+    // maxTileDefinition default to 64
+    return Math.min(this.options.maxTileDefinition, Math.max(32, zoom * 8))
   }
 
   setSceneRenderingObjects() {

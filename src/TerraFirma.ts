@@ -204,7 +204,7 @@ export default class TerraFirma {
         depthClearValue: 0,
       },
       camera: {
-        near: 10,
+        near: 1,
         far: 200_000,
         reversePerspective: true,
       },
@@ -365,7 +365,7 @@ export default class TerraFirma {
 
     this.orbitControls.reset({
       zoomSpeed: (EARTH_RADIUS + altitude) * 0.001,
-      minZoom: 200, // meters above POI
+      minZoom: 100, // meters above POI
       position,
       target,
       targetElevation: altitude,
@@ -454,7 +454,7 @@ export default class TerraFirma {
 
     const mesh = new LitMesh(this.renderer, {
       ...params,
-      depthCompare: 'greater',
+      depthCompare: 'greater-equal',
     })
 
     this.customMeshes.push(mesh)

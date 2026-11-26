@@ -2,13 +2,16 @@ import GUI from 'lil-gui'
 import TerraFirma from './src/TerraFirma'
 import { POIs, DEFAULT_POI } from './config/poi'
 import { tilesProviders } from './config/tiles-providers'
+import { TubeGeometry } from './src/geometries/TubeGeometry'
 import { SphereGeometry, Vec3 } from 'gpu-curtains'
+import { everestConfig } from './config/everest-config'
 
 window.addEventListener('load', async () => {
   const terraFirma = new TerraFirma({
     container: '#canvas',
     // useWorkers: true,
     poi: POIs[DEFAULT_POI],
+    // poi: everestConfig.camps[2].point,
     // poi: {
     //   latitude: 0,
     //   longitude: 0,
@@ -25,101 +28,79 @@ window.addEventListener('load', async () => {
     // renderer: {
     //   lights: false,
     // },
+    // cameraOffset: { north: 2_500, west: 9_000, altitude: 1_500 },
   })
 
   await terraFirma.init()
 
   const sphereGeometry = new SphereGeometry()
-  const campScale = 75
 
-  const everestBaseCampPosition = await terraFirma.getPoint3DPosition({
-    latitude: 28.003,
-    longitude: 86.854,
+  everestConfig.camps.forEach((camp) => {
+    const campMesh = terraFirma.addLitMesh({
+      label: camp.label,
+      geometry: sphereGeometry,
+      material: {
+        color: new Vec3(1, 0, 0),
+        shading: 'Unlit',
+      },
+    })
+
+    campMesh.scale.set(everestConfig.campsScale)
+    campMesh.position.copy(camp.position)
   })
 
-  const baseCamp = terraFirma.addLitMesh({
-    label: 'Base camp',
-    geometry: sphereGeometry,
-    material: {
-      color: new Vec3(1, 0, 0),
-      shading: 'Unlit',
+  everestConfig.paths.forEach((path, index) => {
+    const pathGeometry = new TubeGeometry({
+      points: [everestConfig.camps[index].position, ...path.positions, everestConfig.camps[index + 1].position],
+      radius: everestConfig.pathRadius,
+    })
+
+    terraFirma.addLitMesh({
+      label: path.label,
+      geometry: pathGeometry,
+      material: {
+        color: new Vec3(1, 0, 0),
+        shading: 'Unlit',
+      },
+    })
+
+    // degug paths positions
+    path.positions.forEach((position) => {
+      const debugMesh = terraFirma.addLitMesh({
+        geometry: sphereGeometry,
+        material: {
+          color: new Vec3(0, 1, 0),
+          shading: 'Unlit',
+        },
+      })
+
+      debugMesh.scale.set(everestConfig.pathRadius * 1.25)
+      debugMesh.position.copy(position)
+    })
+  })
+
+  //   everestConfig.paths[4].positions.forEach((position) => {
+  //     const campMesh = terraFirma.addLitMesh({
+  //       geometry: sphereGeometry,
+  //       material: {
+  //         color: new Vec3(0, 1, 0),
+  //         shading: 'Unlit',
+  //       },
+  //     })
+  //
+  //     campMesh.scale.set(everestConfig.campsScale * 0.25)
+  //     campMesh.position.copy(position)
+  //   })
+
+  const testPoints = [
+    {
+      latitude: 27.987619,
+      longitude: 86.925206,
     },
+  ]
+  const testPathPoints = Promise.all(testPoints.map((point) => terraFirma.getPoint3DPosition(point))).then((points) => {
+    points.forEach((point) => console.log(`new Vec3(${point.x}, ${point.y}, ${point.z}),`))
   })
-
-  baseCamp.scale.set(campScale)
-  baseCamp.position.copy(everestBaseCampPosition)
-
-  terraFirma.setCamera({
-    target: everestBaseCampPosition,
-  })
-
-  const everestCamp1Position = await terraFirma.getPoint3DPosition({
-    latitude: 27.9825,
-    longitude: 86.884,
-  })
-
-  const camp1 = terraFirma.addLitMesh({
-    label: 'Camp 1',
-    geometry: sphereGeometry,
-    material: {
-      color: new Vec3(1, 0, 0),
-      shading: 'Unlit',
-    },
-  })
-
-  camp1.scale.set(campScale)
-  camp1.position.copy(everestCamp1Position)
-
-  const everestCamp2Position = await terraFirma.getPoint3DPosition({
-    latitude: 27.9745,
-    longitude: 86.9055,
-  })
-
-  const camp2 = terraFirma.addLitMesh({
-    label: 'Camp 2',
-    geometry: sphereGeometry,
-    material: {
-      color: new Vec3(1, 0, 0),
-      shading: 'Unlit',
-    },
-  })
-
-  camp2.scale.set(campScale)
-  camp2.position.copy(everestCamp2Position)
-
-  const everestCamp3Position = await terraFirma.getPoint3DPosition({
-    latitude: 27.97,
-    longitude: 86.9198,
-  })
-
-  const camp3 = terraFirma.addLitMesh({
-    label: 'Camp 3',
-    geometry: sphereGeometry,
-    material: {
-      color: new Vec3(1, 0, 0),
-      shading: 'Unlit',
-    },
-  })
-
-  camp3.scale.set(campScale)
-  camp3.position.copy(everestCamp3Position)
-
-  const everestCamp4Position = await terraFirma.getPoint3DPosition({
-    latitude: 27.975,
-    longitude: 86.9321,
-  })
-
-  const camp4 = terraFirma.addLitMesh({
-    label: 'Camp 4',
-    geometry: sphereGeometry,
-    material: {
-      color: new Vec3(1, 0, 0),
-      shading: 'Unlit',
-    },
-  })
-
-  camp4.scale.set(campScale)
-  camp4.position.copy(everestCamp4Position)
 
   const gui = new GUI()
   //gui.close()

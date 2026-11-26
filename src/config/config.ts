@@ -28,7 +28,7 @@ export const defaultTilesProviders: TilesProviders = {
 
 export const defaultTilesConfig: TerraFirmaBaseOptions = {
   providers: defaultTilesProviders,
-  minTileDefinition: 15,
+  maxTileDefinition: 64,
   renderer: {
     hdrRendering: true,
     toneMapping: 'Khronos',

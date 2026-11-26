@@ -264,8 +264,9 @@ export class GlobeLOD {
     const tileSurfaceRadius = center.length()
 
     // Read actual tile elevation bounds from terrainMetadata (never undefined!)
-    const minElev = tile.terrainMetadata?.min ?? 0
-    const maxElev = tile.terrainMetadata?.max ?? 500
+    const meta = tile.terrainMetadata ?? this.getParentMetadata(tile)
+    const minElev = meta?.min ?? 0
+    const maxElev = meta?.max ?? 500
 
     const minRadius = this.earthRadius + minElev
     const maxRadius = this.earthRadius + maxElev
@@ -304,9 +305,15 @@ export class GlobeLOD {
     const toCamLen = Math.hypot(toCamX, toCamY, toCamZ)
 
     let foreshortening = 1.0
+    const reliefFactor = tile.terrainMetadata
+      ? Math.min(1, (tile.terrainMetadata.max - tile.terrainMetadata.min) / 1500)
+      : 0
+    // Flat ground attenuates to 0.55 at grazing angles; steep 1,500m+ mountains stay near 1.0
+    const minForeshortening = 0.55 + 0.45 * reliefFactor
+
     if (centerLen > 0 && toCamLen > 0) {
       const viewDot = Math.max(0, (center.x * toCamX + center.y * toCamY + center.z * toCamZ) / (centerLen * toCamLen))
-      foreshortening = 0.55 + 0.45 * Math.sqrt(viewDot)
+      foreshortening = minForeshortening + (1.0 - minForeshortening) * Math.sqrt(viewDot)
     }
 
     const south = tile.bounds.south * DEG2RAD
@@ -325,11 +332,11 @@ export class GlobeLOD {
     const tileWidth = Math.max(horizontalWidth, verticalHeight)
 
     // Boost mid-distance tiles (5km - 100km) without changing closest tiles (< 1.5km) or far horizon (> 150km)
-    const midNear = smoothstep(1_500, 5_000, distance) // 0 at close range -> 1 by 5 km
-    const midFar = 1.0 - smoothstep(60_000, 150_000, distance) // 1 at 60 km -> 0 by 150 km
-    const midRangeBoost = 1.0 + 2.0 * (midNear * midFar) // Up to 3x SSE in the mid-distance
+    // const midNear = smoothstep(1_500, 5_000, distance) // 0 at close range -> 1 by 5 km
+    // const midFar = 1.0 - smoothstep(40_000, 150_000, distance) // 1 at 40 km -> 0 by 150 km
+    // const midRangeBoost = 1.0 + 1.6 * (midNear * midFar) // Up to 3x SSE in the mid-distance
 
-    const toScreenSpace = (worldSize: number) => ((worldSize * focalLength) / distance) * foreshortening * midRangeBoost
+    const toScreenSpace = (worldSize: number) => ((worldSize * focalLength) / distance) * foreshortening
 
     const maxZooms = this.getMaxZooms([tile.x, tile.y, tile.z])
 
@@ -340,9 +347,19 @@ export class GlobeLOD {
     // World size of ONE mesh triangle edge on THIS tile
     const meshDefinition = Math.max(1, this.getMeshDefinition(tile.z) - 1)
     const meshSpacing = tileWidth / meshDefinition
-    const terrainError = tile.z < maxZooms.elevation ? toScreenSpace(meshSpacing) : 0
+    const horizontalTerrainError = tile.z < maxZooms.elevation ? toScreenSpace(meshSpacing) : 0
 
-    return Math.max(imageryError, terrainError)
+    // 2. NEW: Vertical geometric relief error for mountainous tiles
+    // In rugged terrain, subsampling a tile loses vertical peak-to-valley detail proportional to (max - min)
+    let reliefError = 0
+    if (tile.terrainMetadata && tile.z < maxZooms.elevation) {
+      const elevationRange = Math.max(0, tile.terrainMetadata.max - tile.terrainMetadata.min)
+      // Measures vertical peak-to-valley error caused by coarse DEM resolution
+      const verticalGeometricError = elevationRange / 64
+      reliefError = toScreenSpace(verticalGeometricError)
+    }
+
+    return Math.max(imageryError, horizontalTerrainError, reliefError)
   }
 
   /**

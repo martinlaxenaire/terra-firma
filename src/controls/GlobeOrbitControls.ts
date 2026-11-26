@@ -612,26 +612,27 @@ export class GlobeOrbitControls {
     newCameraPosition.add(this.globeTarget)
     newTargetPosition.add(this.globeTarget)
 
+    // Intersect the ray with the terrain sphere.
+    const terrainRadius = EARTH_RADIUS + this.targetElevation
+
     // Ensure the camera remains at least minZoom above the current terrain.
-    const minCameraDistance = EARTH_RADIUS + this.targetElevation + this.minZoom
+    const minCameraDistance = terrainRadius + this.minZoom
     const newCameraDistance = newCameraPosition.distance(this.globeTarget)
 
     if (newCameraDistance < minCameraDistance) {
       const cameraTargetDistance = newCameraPosition.distance(newTargetPosition)
 
       // back camera position from minZoom
-      newCameraPosition
-        .sub(this.target)
-        .normalize()
-        .multiplyScalar(cameraTargetDistance + this.minZoom)
-        .add(this.target)
+      // newCameraPosition
+      //   .sub(this.target)
+      //   .normalize()
+      //   .multiplyScalar(cameraTargetDistance + this.minZoom)
+      //   .add(this.target)
+      newCameraPosition.normalize().multiplyScalar(terrainRadius + this.minZoom)
     }
 
     // Ray from the rotated camera through the rotated target.
     const rayDirection = newTargetPosition.clone().sub(newCameraPosition).normalize()
-
-    // Intersect the ray with the terrain sphere.
-    const terrainRadius = EARTH_RADIUS + this.targetElevation
 
     const rayOrigin = newCameraPosition.clone().sub(this.globeTarget)
 

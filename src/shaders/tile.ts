@@ -132,14 +132,14 @@ export const tileFs = /* wgsl */ `
         elevationTexture,
         elevationSampler,
         fsInput.elevationUv,
-        radialNormal,
+        planetUp,
         tile.metersPerPixel,
         1.1 // Vertical exaggeration (1.0 = true scale, 1.5–2.0 = crisp cartographic relief)
       );
 
       // Signed difference between terrain slope lighting and flat ground (-1.0 to +1.0)
       // Negative = facing away from sun, 0.0 = flat plain, Positive = facing sun
-      let slopeDelta = dot(terrainNormal, sunDir) - sunDot;
+      let slopeDelta = dot(terrainNormal, sunDir) - planetSunDot;
 
       // Soft S-curve transition (no hard clamp edges or 0.0 cutoff!)
       // Ease smoothly from shaded slope (-0.45) through flat plain (0.0) to sunlit slope (+0.45)
@@ -147,7 +147,7 @@ export const tileFs = /* wgsl */ `
       let hillshade = mix(0.72, 1.28, softSlope);
 
       // Fade out hillshade smoothly near the terminator so night side stays clean
-      let reliefStrength = smoothstep(-0.05, 0.15, sunDot);
+      let reliefStrength = smoothstep(-0.05, 0.15, planetSunDot);
       finalHillshade = mix(1.0, hillshade, reliefStrength * 0.65);
     }
 

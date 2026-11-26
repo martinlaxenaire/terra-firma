@@ -13,7 +13,7 @@ export const getVertexAerialPerspective = /* wgsl */ `
           sunDir,
           globe.earthRadius,
           0.0,
-          4u,
+          6u,
           false
       );
 
