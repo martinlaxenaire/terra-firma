@@ -2,6 +2,8 @@ import { globeHelpers } from './chunks/globe-helpers.js'
 import { elevationHelpers } from './chunks/elevation-helpers.js'
 import { atmosphericConstants } from './chunks/atmospheric-constants.js'
 import { calculateAerialPerspective } from './chunks/calculate-aerial-perspective.js'
+import { applyLightingFeatures, declareLightingFeatures } from './chunks/apply-lighting-features.js'
+import { getVertexAerialPerspective } from './chunks/get-vertex-aerial-perspective.js'
 
 export const tileVs = /* wgsl */ `
   ${globeHelpers}
@@ -63,30 +65,7 @@ export const tileVs = /* wgsl */ `
     vsOutput.worldPosition =
         worldPosition.xyz / worldPosition.w;
 
-    if (params.useFog == 1) {
-        let toVertex = vsOutput.worldPosition - camera.position;
-        let distanceToVertex = length(toVertex);
-        let rayDirection = toVertex / max(distanceToVertex, 0.0001);
-        let sunDir = normalize(globe.sunPosition);
-
-        // No need for screen-space jitter when smoothly interpolated across triangles!
-        let aerial = calculateAerialPerspective(
-            camera.position,
-            rayDirection,
-            distanceToVertex,
-            sunDir,
-            globe.earthRadius,
-            0.0,
-            4u,
-            false
-        );
-
-        vsOutput.aerialInScattering = aerial.inScattering;
-        vsOutput.aerialTransmittance = aerial.transmittance;
-    } else {
-        vsOutput.aerialInScattering = vec3f(0.0);
-        vsOutput.aerialTransmittance = vec3f(1.0);
-    }
+    ${getVertexAerialPerspective}
 
     return vsOutput;
   }
@@ -143,84 +122,48 @@ export const tileFs = /* wgsl */ `
       discard;
     }
 
-    var color: vec4f = textureSample(satelliteTexture, satelliteSampler, fsInput.uv);
+    var outputColor: vec4f = textureSample(satelliteTexture, satelliteSampler, fsInput.uv);
 
-    let radialNormal = normalize(fsInput.normal);
-    let sunDir = normalize(globe.sunPosition);
+    ${declareLightingFeatures}
 
-    // Cosine of zenith angle (-1.0 = midnight, 0.0 = horizon, +1.0 = noon)
-    let sunDot = dot(radialNormal, sunDir);
-    let dayFactor = smoothstep(-0.16, 0.14, sunDot);
+    if(features.useSunLight == 1 && features.useSunShadows == 1) {
+      // 2. Terrain hillshade from Terrarium DEM
+      let terrainNormal = getTerrainWorldNormal(
+        elevationTexture,
+        elevationSampler,
+        fsInput.elevationUv,
+        radialNormal,
+        tile.metersPerPixel,
+        1.1 // Vertical exaggeration (1.0 = true scale, 1.5–2.0 = crisp cartographic relief)
+      );
 
-    var finalHillshade = 1.0;
-    let exposure = mix(1.2, 1.0, dayFactor);
+      // Signed difference between terrain slope lighting and flat ground (-1.0 to +1.0)
+      // Negative = facing away from sun, 0.0 = flat plain, Positive = facing sun
+      let slopeDelta = dot(terrainNormal, sunDir) - sunDot;
 
-    if(params.useSunLight == 1) {
-      if(params.useSunShadows == 1) {
-        // 2. Terrain hillshade from Terrarium DEM
-        let terrainNormal = getTerrainWorldNormal(
-          elevationTexture,
-          elevationSampler,
-          fsInput.elevationUv,
-          radialNormal,
-          tile.metersPerPixel,
-          1.1 // Vertical exaggeration (1.0 = true scale, 1.5–2.0 = crisp cartographic relief)
-        );
+      // Soft S-curve transition (no hard clamp edges or 0.0 cutoff!)
+      // Ease smoothly from shaded slope (-0.45) through flat plain (0.0) to sunlit slope (+0.45)
+      let softSlope = smoothstep(-0.45, 0.45, slopeDelta);
+      let hillshade = mix(0.72, 1.28, softSlope);
 
-        // Signed difference between terrain slope lighting and flat ground (-1.0 to +1.0)
-        // Negative = facing away from sun, 0.0 = flat plain, Positive = facing sun
-        let slopeDelta = dot(terrainNormal, sunDir) - sunDot;
-
-        // Soft S-curve transition (no hard clamp edges or 0.0 cutoff!)
-        // Ease smoothly from shaded slope (-0.45) through flat plain (0.0) to sunlit slope (+0.45)
-        let softSlope = smoothstep(-0.45, 0.45, slopeDelta);
-        let hillshade = mix(0.72, 1.28, softSlope);
-
-        // Fade out hillshade smoothly near the terminator so night side stays clean
-        let reliefStrength = smoothstep(-0.05, 0.15, sunDot);
-        finalHillshade = mix(1.0, hillshade, reliefStrength * 0.65);
-      }
-
-      // 3. Base winter-sun intensity + sunset glow
-      let wrapDiffuse = clamp((sunDot + 0.15) / 1.15, 0.0, 1.0);
-      let sunIntensity = mix(0.45, 1.2, pow(wrapDiffuse, 0.75)) * finalHillshade;
-
-      let horizonGlow = exp(-pow((sunDot + 0.02) * 10.5, 2.0));
-      let subtleTint = mix(vec3f(1.0), colors.sunset, horizonGlow * 0.45);
-
-      // 4. Readable cool night side (starlight / moonlight ambient)
-      let nightAmbient = color.rgb * colors.nightTint + colors.nightBase;
-      let dayLit = max(color.rgb * sunIntensity * subtleTint, nightAmbient * 1.15);
-
-      // Smoothly blend night ambient into day lighting
-      color.rgb = mix(nightAmbient, max(dayLit, nightAmbient), dayFactor);
+      // Fade out hillshade smoothly near the terminator so night side stays clean
+      let reliefStrength = smoothstep(-0.05, 0.15, sunDot);
+      finalHillshade = mix(1.0, hillshade, reliefStrength * 0.65);
     }
 
-    if(params.useFog == 1) {
-      // Tune between 0.25 (crisp map) and 1.0 (full physical haze)
-      let hazeStrength = 0.25;
-      let nightHazeStrength = 0.5;
-
-      let effectiveHaze = mix(nightHazeStrength, hazeStrength, dayFactor);
-
-      // Blend transmittance toward 1.0 (less attenuation) and scale down inScattering
-      let terrainTransmittance = mix(vec3f(1.0), fsInput.aerialTransmittance, effectiveHaze);
-      let terrainInScattering = fsInput.aerialInScattering * effectiveHaze;
-
-      color.rgb = color.rgb * terrainTransmittance + terrainInScattering;
-    }
+    ${applyLightingFeatures}
 
     if(debug.debugZoom == 1) {
-      color.rgb = vec3(f32(tile.current[2].element) / 20.0, f32(debug.elevationZoom) / 20.0, 0.0);
+      outputColor.rgb = vec3(f32(tile.current[2].element) / 20.0, f32(debug.elevationZoom) / 20.0, 0.0);
     }
 
     if(debug.elevation == 1) {
       let elevation = fsInput.elevation / 9000.0;
-      color.rgb = vec3(elevation);
+      outputColor.rgb = vec3(elevation);
     }
 
-    color.a *= params.globalOpacity;
+    outputColor.a *= params.globalOpacity;
 
-    return color;
+    return outputColor;
   }
 `

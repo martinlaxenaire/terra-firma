@@ -416,18 +416,10 @@ export default class TilesManager {
 
   setSunLight(sunLight = true) {
     this.state.sunLight = sunLight
-
-    this.mapTilesManager.mapTiles.forEach((tile) => {
-      tile.tileMesh?.setSunLight(this.state.sunLight)
-    })
   }
 
   setSunShadows(sunShadows = true) {
     this.state.sunShadows = sunShadows
-
-    this.mapTilesManager.mapTiles.forEach((tile) => {
-      tile.tileMesh?.setSunShadows(this.state.sunShadows)
-    })
   }
 
   setDebugZoom(debugZoom = false) {

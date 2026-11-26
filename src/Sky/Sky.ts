@@ -1,26 +1,19 @@
 import { FullscreenPlane, GPUCameraRenderer, Mat4, MediaTexture, Vec3, sRGBToLinear } from 'gpu-curtains'
 import { EARTH_RADIUS } from '../config/constants.js'
 import { skyFs } from '../shaders/sky.js'
+import TerraFirma from '../TerraFirma.js'
 
 export class Sky {
+  terraFirma: TerraFirma
   renderer: GPUCameraRenderer
   camera: GPUCameraRenderer['camera']
 
-  sunPosition: Vec3
   mesh: FullscreenPlane
 
-  constructor({
-    renderer,
-    camera,
-    sunPosition = new Vec3(),
-  }: {
-    renderer: GPUCameraRenderer
-    camera: GPUCameraRenderer['camera']
-    sunPosition?: Vec3
-  }) {
-    this.renderer = renderer
-    this.camera = camera
-    this.sunPosition = sunPosition
+  constructor(terraFirma: TerraFirma) {
+    this.terraFirma = terraFirma
+    this.renderer = this.terraFirma.renderer
+    this.camera = this.terraFirma.camera
 
     const starsMap = new MediaTexture(this.renderer, {
       label: 'Stars map',
@@ -35,7 +28,7 @@ export class Sky {
     this.mesh = new FullscreenPlane(this.renderer, {
       depth: false,
       depthCompare: 'greater-equal', // because of reversed depth
-      bindings: [this.renderer.bindings.camera],
+      bindings: [this.renderer.bindings.camera, this.terraFirma.bindings.globe, this.terraFirma.bindings.colors],
       textures: [starsMap],
       uniforms: {
         params: {
@@ -46,31 +39,11 @@ export class Sky {
             },
           },
         },
-        globe: {
-          struct: {
-            earthRadius: {
-              type: 'f32',
-              value: EARTH_RADIUS,
-            },
-            sunPosition: {
-              type: 'vec3f',
-              value: this.sunPosition,
-            },
-          },
-        },
         projection: {
           struct: {
             inverseViewProjectionMatrix: {
               type: 'mat4x4f',
               value: new Mat4().multiplyMatrices(this.camera.projectionMatrix, this.camera.viewMatrix).invert(),
-            },
-          },
-        },
-        colors: {
-          struct: {
-            nightSky: {
-              type: 'vec3f',
-              value: sRGBToLinear(new Vec3(0.04, 0.06, 0.1)),
             },
           },
         },

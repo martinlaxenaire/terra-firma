@@ -160,7 +160,7 @@ export const skyFs = `
         let skyLuminance = dot(skyPerspective.inScattering, vec3f(0.2126, 0.7152, 0.0722));
         // Suppress stars when the sky is bright (simulates camera exposure adaptation).
         // Tune 0.04 (stars vanish completely by early civil twilight) to 0.15 (visible deeper into dusk).
-        let starVisibility = exp(-skyLuminance / 0.03);
+        let starVisibility = exp(-skyLuminance / 0.015);
 
         let starIntensity = 1.0;
         hdrColor += stars * skyPerspective.transmittance * starVisibility * starIntensity;

@@ -1,6 +1,14 @@
 import { gsap } from 'gsap'
-import { GPUDeviceManager, GPUCameraRenderer, Vec3, DirectionalLight } from 'gpu-curtains'
-import type { GPUCameraRendererParams } from 'gpu-curtains'
+import {
+  GPUDeviceManager,
+  GPUCameraRenderer,
+  Vec3,
+  LitMesh,
+  sRGBToLinear,
+  DirectionalLight,
+  BufferBinding,
+} from 'gpu-curtains'
+import { GPUCameraRendererParams, LitMeshParameters } from 'gpu-curtains'
 import { GlobeOrbitControls } from './controls/GlobeOrbitControls.js'
 
 import TilesManager from './TilesManager/TilesManager.js'
@@ -13,6 +21,10 @@ import { lonLatOffsetToWorld, lonLatToWorld } from './utils/earth-coordinates.js
 import { TilesProviders } from './types/providers.js'
 import { GeographicCoordinates, GlobeOffset } from './types/geographic.js'
 import { Sky } from './Sky/Sky.js'
+import { atmosphericConstants } from './shaders/chunks/atmospheric-constants.js'
+import { calculateAerialPerspective } from './shaders/chunks/calculate-aerial-perspective.js'
+import { getVertexAerialPerspective } from './shaders/chunks/get-vertex-aerial-perspective.js'
+import { applyLightingFeatures, declareLightingFeatures } from './shaders/chunks/apply-lighting-features.js'
 
 export interface TerraFirmaBaseOptions extends TilesManagerBaseConfig {
   renderer: Omit<
@@ -56,6 +68,14 @@ export default class TerraFirma {
   sun!: DirectionalLight
   sky: Sky | undefined
 
+  bindings: {
+    globe: BufferBinding
+    colors: BufferBinding
+    features: BufferBinding
+  }
+
+  customMeshes: LitMesh[]
+
   constructor(options: TerraFirmaOptions) {
     this.options = options
     this.options.providers = options.providers ?? defaultTilesProviders
@@ -66,6 +86,8 @@ export default class TerraFirma {
     this.options.cameraOffset = (
       options.cameraOffset ? { ...defaultCameraOffset, ...options.cameraOffset } : defaultCameraOffset
     ) as GlobeOffset
+
+    this.customMeshes = []
 
     this.setConfig()
 
@@ -82,11 +104,12 @@ export default class TerraFirma {
   async init() {
     await this.setRenderer()
 
+    this.createMaterialBindings()
+    this.setSky()
+
     this.setFog()
 
     this.initTilesManager()
-
-    this.setSky()
   }
 
   setPOI(poi: POI) {
@@ -198,7 +221,81 @@ export default class TerraFirma {
       minPolarAngle: 0.01,
     })
 
+    this.sun = new DirectionalLight(this.renderer, {
+      // hard coded in aerial perspective and sky shaders
+      intensity: 0,
+    })
+
     this.renderer.onBeforeRender(() => this.render())
+  }
+
+  createMaterialBindings() {
+    const globe = new BufferBinding({
+      label: 'Globe',
+      name: 'globe',
+      bindingType: 'uniform',
+      struct: {
+        earthRadius: {
+          type: 'f32',
+          value: EARTH_RADIUS,
+        },
+        sunPosition: {
+          type: 'vec3f',
+          value: this.sun.position,
+        },
+      },
+    })
+
+    const colors = new BufferBinding({
+      label: 'Colors',
+      name: 'colors',
+      bindingType: 'uniform',
+      struct: {
+        sunset: {
+          type: 'vec3f',
+          value: sRGBToLinear(new Vec3(1.04, 0.94, 0.86)),
+        },
+        nightBase: {
+          type: 'vec3f',
+          value: sRGBToLinear(new Vec3(0.032, 0.042, 0.055)),
+        },
+        nightTint: {
+          type: 'vec3f',
+          value: sRGBToLinear(new Vec3(0.32, 0.37, 0.48)),
+        },
+        nightSky: {
+          type: 'vec3f',
+          value: sRGBToLinear(new Vec3(0.04, 0.06, 0.1)),
+        },
+      },
+    })
+
+    const features = new BufferBinding({
+      label: 'Features',
+      name: 'features',
+      bindingType: 'uniform',
+      struct: {
+        // TODO
+        useSunLight: {
+          type: 'u32',
+          value: 1,
+        },
+        useSunShadows: {
+          type: 'u32',
+          value: 1,
+        },
+        useFog: {
+          type: 'u32',
+          value: this.options.useFog ? 1 : 0,
+        },
+      },
+    })
+
+    this.bindings = {
+      globe,
+      colors,
+      features,
+    }
   }
 
   initTilesManager() {
@@ -287,6 +384,84 @@ export default class TerraFirma {
   }
 
   /**
+   * Adds a custom mesh to the scene, lit by sun and atmosphere settings as are the tiles.
+   * @param params
+   * @returns
+   */
+  addLitMesh(params: Omit<LitMeshParameters, 'depthCompare'>): LitMesh {
+    if (!params.material) {
+      params.material = {
+        additionalVaryings: [],
+        vertexChunks: {},
+        fragmentChunks: {},
+      }
+    } else {
+      if (!params.material.additionalVaryings) {
+        params.material.additionalVaryings = []
+      }
+
+      if (!params.material.vertexChunks) {
+        params.material.vertexChunks = {}
+      }
+
+      if (!params.material.fragmentChunks) {
+        params.material.fragmentChunks = {}
+      }
+    }
+
+    params.material.additionalVaryings = [
+      ...params.material.additionalVaryings,
+      ...[
+        {
+          name: 'aerialInScattering',
+          type: 'vec3f',
+        },
+        {
+          name: 'aerialTransmittance',
+          type: 'vec3f',
+        },
+      ],
+    ]
+
+    // vertex
+    params.material.vertexChunks.additionalHead = `
+      ${params.material.vertexChunks.additionalHead ?? ''}
+
+      const PI = ${Math.PI};
+      ${atmosphericConstants}
+      ${calculateAerialPerspective}
+      `
+
+    params.material.vertexChunks.additionalContribution = `
+      ${params.material.vertexChunks.additionalContribution ?? ''}
+
+      ${getVertexAerialPerspective}
+      `
+
+    // fragment
+    params.material.fragmentChunks.additionalContribution = `
+      ${params.material.fragmentChunks.additionalContribution ?? ''}
+
+      ${declareLightingFeatures}
+      ${applyLightingFeatures}
+      `
+
+    // patch bindings
+    params.bindings = [
+      ...(params.bindings ?? []),
+      ...[this.bindings.globe, this.bindings.colors, this.bindings.features],
+    ]
+
+    const mesh = new LitMesh(this.renderer, {
+      ...params,
+      depthCompare: 'greater',
+    })
+
+    this.customMeshes.push(mesh)
+    return mesh
+  }
+
+  /**
    * Calculates real-time Sun position in Earth-Centered Earth-Fixed (ECEF) space
    * mapped to a standard Y-up 3D engine (like gpu-curtains).
    *
@@ -346,9 +521,8 @@ export default class TerraFirma {
   }
 
   setSky() {
-    this.sun = new DirectionalLight(this.renderer)
     this.getRealTimeSunPositionECEF(this.sun.position, this.options.currentDate)
-    this.sky = new Sky({ renderer: this.renderer, camera: this.camera, sunPosition: this.sun.position })
+    this.sky = new Sky(this)
     this.useSky(this.options.useSky)
   }
 
@@ -358,11 +532,13 @@ export default class TerraFirma {
   }
 
   useSunLight(useSunLight = true) {
-    this.tilesManager?.setSunLight(useSunLight)
+    // this.tilesManager?.setSunLight(useSunLight)
+    this.bindings.features.inputs.useSunLight.value = useSunLight ? 1 : 0
   }
 
   useSunShadows(useSunShadows = true) {
-    this.tilesManager?.setSunShadows(useSunShadows)
+    // this.tilesManager?.setSunShadows(useSunShadows)
+    this.bindings.features.inputs.useSunShadows.value = useSunShadows ? 1 : 0
   }
 
   useSky(useSky = true) {
@@ -373,7 +549,8 @@ export default class TerraFirma {
   }
 
   useFog(useFog = false) {
-    this.tilesManager?.setFog(useFog)
+    // this.tilesManager?.setFog(useFog)
+    this.bindings.features.inputs.useFog.value = useFog ? 1 : 0
   }
 
   setFog() {
@@ -385,7 +562,7 @@ export default class TerraFirma {
   }
 
   render() {
-    if (!this.options.currentDate) {
+    if (!this.options.currentDate && this.sun) {
       this.getRealTimeSunPositionECEF(this.sun.position)
     }
 
@@ -403,9 +580,10 @@ export default class TerraFirma {
       this.tilesManager.destroy()
     }
 
-    // if (this.sky) {
-    //   this.sky.destroy()
-    // }
+    this.customMeshes.forEach((mesh) => {
+      mesh.remove()
+    })
+    this.customMeshes = []
 
     this.sky?.destroy()
     this.renderer.destroy()

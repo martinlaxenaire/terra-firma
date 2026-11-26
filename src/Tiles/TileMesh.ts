@@ -191,6 +191,11 @@ export default class TileMesh {
           code: tileFs,
         },
       },
+      bindings: [
+        this.tilesManager.terraFirma.bindings.globe,
+        this.tilesManager.terraFirma.bindings.colors,
+        this.tilesManager.terraFirma.bindings.features,
+      ],
       uniforms: {
         tile: {
           struct: {
@@ -201,18 +206,6 @@ export default class TileMesh {
             metersPerPixel: {
               type: 'f32',
               value: this.getMetersPerPixel(this.elevationTile.tile[2], this.elevationTile.tile[1]),
-            },
-          },
-        },
-        globe: {
-          struct: {
-            earthRadius: {
-              type: 'f32',
-              value: EARTH_RADIUS,
-            },
-            sunPosition: {
-              type: 'vec3f',
-              value: this.tilesManager.terraFirma.sun.position,
             },
           },
         },
@@ -238,18 +231,6 @@ export default class TileMesh {
               type: 'f32',
               value: 0,
             },
-            useSunLight: {
-              type: 'u32',
-              value: this.tilesManager.state.sunLight ? 1 : 0,
-            },
-            useSunShadows: {
-              type: 'u32',
-              value: this.tilesManager.state.sunShadows ? 1 : 0,
-            },
-            useFog: {
-              type: 'u32',
-              value: this.tilesManager.state.fog ? 1 : 0,
-            },
             fogNear: {
               type: 'f32',
               value: this.tilesManager.terraFirma.fog.near,
@@ -257,30 +238,6 @@ export default class TileMesh {
             fogFar: {
               type: 'f32',
               value: this.tilesManager.terraFirma.fog.far,
-            },
-          },
-        },
-        colors: {
-          struct: {
-            fog: {
-              type: 'vec3f',
-              value: this.tilesManager.terraFirma.fog.color,
-            },
-            sunset: {
-              type: 'vec3f',
-              value: sRGBToLinear(new Vec3(1.04, 0.94, 0.86)),
-            },
-            nightBase: {
-              type: 'vec3f',
-              value: sRGBToLinear(new Vec3(0.032, 0.042, 0.055)),
-            },
-            nightTint: {
-              type: 'vec3f',
-              value: sRGBToLinear(new Vec3(0.32, 0.37, 0.48)),
-            },
-            nightSky: {
-              type: 'vec3f',
-              value: sRGBToLinear(new Vec3(0.04, 0.06, 0.1)),
             },
           },
         },
@@ -341,18 +298,6 @@ export default class TileMesh {
   setGlobalOpacity(opacity = 0) {
     if (this.mesh) {
       this.mesh.uniforms.params.globalOpacity.value = opacity
-    }
-  }
-
-  setSunLight(useSunLight = true) {
-    if (this.mesh) {
-      this.mesh.uniforms.params.useSunLight.value = useSunLight ? 1 : 0
-    }
-  }
-
-  setSunShadows(useSunShadows = true) {
-    if (this.mesh) {
-      this.mesh.uniforms.params.useSunShadows.value = useSunShadows ? 1 : 0
     }
   }
 
