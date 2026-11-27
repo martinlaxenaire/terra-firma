@@ -35,7 +35,13 @@ export interface TerraFirmaBaseOptions extends TilesManagerBaseConfig {
   cameraOffset?: Partial<GlobeOffset>
   useFog?: boolean
   useSky?: boolean
+  useSunLight?: boolean
+  useSunShadows?: boolean
   useWorkers?: boolean
+  fog?: {
+    dayIntensity?: number
+    nightIntensity?: number
+  }
 }
 
 export interface TerraFirmaOptions extends Omit<TerraFirmaBaseOptions, 'providers'> {
@@ -167,9 +173,7 @@ export default class TerraFirma {
       renderer: rendererOptions,
       controls: controlsOptions,
       cameraOffset: cameraOffsetOptions,
-      useFog,
-      useSky,
-      useWorkers,
+      fog: fogOptions,
       ...baseOptions
     } = this.options
 
@@ -177,12 +181,14 @@ export default class TerraFirma {
       renderer: rendererDefault,
       controls: controlsDefault,
       cameraOffset: cameraOffsetDefault,
+      fog: fogDefault,
       ...defaultConfig
     } = defaultTilesConfig
 
     const renderer = { ...rendererDefault, ...rendererOptions }
     const controls = { ...controlsDefault, ...controlsOptions }
     const cameraOffset = { ...cameraOffsetDefault, ...cameraOffsetOptions }
+    const fog = { ...fogDefault, ...fogOptions }
 
     this.config = {
       ...defaultConfig,
@@ -190,9 +196,7 @@ export default class TerraFirma {
       renderer,
       controls,
       cameraOffset,
-      useSky: useSky ?? true,
-      useFog: useFog ?? true,
-      useWorkers: useWorkers ?? false,
+      fog,
     }
   }
 
@@ -257,6 +261,14 @@ export default class TerraFirma {
         sunPosition: {
           type: 'vec3f',
           value: this.sun.position,
+        },
+        dayFogIntensity: {
+          type: 'f32',
+          value: this.config.fog.dayIntensity,
+        },
+        nightFogIntensity: {
+          type: 'f32',
+          value: this.config.fog.nightIntensity,
         },
       },
     })
@@ -539,11 +551,13 @@ export default class TerraFirma {
   }
 
   useSunLight(useSunLight = true) {
-    this.bindings.features.inputs.useSunLight.value = useSunLight ? 1 : 0
+    this.config.useSunLight = useSunLight
+    this.bindings.features.inputs.useSunLight.value = this.config.useSunLight ? 1 : 0
   }
 
   useSunShadows(useSunShadows = true) {
-    this.bindings.features.inputs.useSunShadows.value = useSunShadows ? 1 : 0
+    this.config.useSunShadows = useSunShadows
+    this.bindings.features.inputs.useSunShadows.value = this.config.useSunShadows ? 1 : 0
   }
 
   useSky(useSky = true) {
@@ -556,6 +570,14 @@ export default class TerraFirma {
   useFog(useFog = false) {
     this.config.useFog = useFog
     this.bindings.features.inputs.useFog.value = this.config.useFog ? 1 : 0
+  }
+
+  setFogIntensity(fog = this.config.fog) {
+    fog = { ...this.config.fog, ...fog }
+    this.config.fog = fog
+
+    this.bindings.globe.inputs.dayFogIntensity.value = this.config.fog.dayIntensity
+    this.bindings.globe.inputs.nightFogIntensity.value = this.config.fog.nightIntensity
   }
 
   render() {

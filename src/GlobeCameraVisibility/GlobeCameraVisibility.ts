@@ -1,4 +1,4 @@
-import { GPUCameraRenderer, Vec3, Vec2, RendererCamera } from 'gpu-curtains'
+import { PerspectiveCamera, Vec3, Vec2, RendererCamera } from 'gpu-curtains'
 import { DEG2RAD, EARTH_RADIUS } from '../config/constants.js'
 import { GeographicCoordinates } from '../types/geographic.js'
 import { globeToMercatorLatitude } from '../utils/earth-coordinates.js'
@@ -110,7 +110,8 @@ export class GlobeCameraVisibility {
     try {
       this.lastNear = near
       this.lastFar = far
-      this.camera.setPerspective({ near, far })
+      this.camera.near = near
+      this.camera.far = far
     } finally {
       this.updatingClippingPlanes = false
     }
@@ -177,7 +178,10 @@ export class GlobeCameraVisibility {
       frustum,
       intersections,
       footprint,
-      focalLength: this.camera.size.height / (2 * Math.tan(this.camera.fov * DEG2RAD * 0.5)),
+      focalLength:
+        this.camera instanceof PerspectiveCamera
+          ? this.camera.size.height / (2 * Math.tan(this.camera.fov * DEG2RAD * 0.5))
+          : this.camera.top - this.camera.bottom,
     }
 
     this.onUpdate?.(this._result)

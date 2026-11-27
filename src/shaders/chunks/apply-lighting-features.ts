@@ -34,15 +34,11 @@ export const applyLightingFeatures = /* wgsl */ `
   }
 
   if(features.useFog == 1) {
-    // Tune between 0.25 (crisp map) and 1.0 (full physical haze)
-    let hazeStrength = 0.25;
-    let nightHazeStrength = 0.5;
-
-    let effectiveHaze = mix(nightHazeStrength, hazeStrength, dayFactor);
+    let fogIntensity = mix(globe.nightFogIntensity, globe.dayFogIntensity, dayFactor);
 
     // Blend transmittance toward 1.0 (less attenuation) and scale down inScattering
-    let terrainTransmittance = mix(vec3f(1.0), fsInput.aerialTransmittance, effectiveHaze);
-    let terrainInScattering = fsInput.aerialInScattering * effectiveHaze;
+    let terrainTransmittance = mix(vec3f(1.0), fsInput.aerialTransmittance, fogIntensity);
+    let terrainInScattering = fsInput.aerialInScattering * fogIntensity;
 
     outputColor.rgb = outputColor.rgb * terrainTransmittance + terrainInScattering;
   }

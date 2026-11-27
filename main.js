@@ -112,14 +112,14 @@ window.addEventListener('load', async () => {
     .name('POI')
 
   mapFolder
-    .add({ useSunLight: true }, 'useSunLight')
+    .add({ useSunLight: terraFirma.config.useSunLight }, 'useSunLight')
     .onChange((value) => {
       terraFirma.useSunLight(value)
     })
     .name('Use sunlight')
 
   mapFolder
-    .add({ useSunShadows: true }, 'useSunShadows')
+    .add({ useSunShadows: terraFirma.config.useSunShadows }, 'useSunShadows')
     .onChange((value) => {
       terraFirma.useSunShadows(value)
     })
@@ -143,12 +143,28 @@ window.addEventListener('load', async () => {
 
   skyFolder.add(terraFirma.sky.mesh.uniforms.params.viewSamples, 'value', 2, 20, 1).name('View samples')
 
-  mapFolder
+  const fogFolder = mapFolder.addFolder('Fog')
+
+  fogFolder
     .add({ useFog: terraFirma.config.useFog }, 'useFog')
     .onChange((value) => {
       terraFirma.useFog(value)
     })
     .name('Use fog')
+
+  fogFolder
+    .add({ dayIntensity: terraFirma.config.fog.dayIntensity }, 'dayIntensity', 0, 2, 0.05)
+    .onChange((value) => {
+      terraFirma.setFogIntensity({ dayIntensity: value })
+    })
+    .name('Day intensity')
+
+  fogFolder
+    .add({ nightIntensity: terraFirma.config.fog.nightIntensity }, 'nightIntensity', 0, 2, 0.05)
+    .onChange((value) => {
+      terraFirma.setFogIntensity({ nightIntensity: value })
+    })
+    .name('Night intensity')
 
   const camFolder = gui.addFolder('Camera')
   camFolder.add(terraFirma.camera, 'fov', 20, 100, 1).onChange((value) => {

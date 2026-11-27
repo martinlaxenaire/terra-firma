@@ -30,6 +30,11 @@ export const defaultTilesProviders: TilesProviders = {
 export const defaultTilesConfig: TerraFirmaBaseOptions = {
   providers: defaultTilesProviders,
   maxTileDefinition: 64,
+  useFog: true,
+  useSky: true,
+  useSunLight: true,
+  useSunShadows: true,
+  useWorkers: false,
   renderer: {
     hdrRendering: true,
     toneMapping: 'Khronos',
@@ -52,6 +57,10 @@ export const defaultTilesConfig: TerraFirmaBaseOptions = {
     north: -4_000,
     west: 0,
     altitude: 2_000,
+  },
+  fog: {
+    dayIntensity: 0.25,
+    nightIntensity: 0.5,
   },
   onIdle: () => {},
 }
