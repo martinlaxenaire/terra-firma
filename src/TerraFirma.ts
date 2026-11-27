@@ -336,7 +336,6 @@ export default class TerraFirma {
         this.setCameraFromPOI(altitude)
       },
       onCameraUpdate: (altitude: number) => {
-        this.controls.zoomSpeed = this.getZoomSpeed(altitude)
         this.sky?.updateCameraProjection()
       },
       onIdle: () => {
@@ -351,18 +350,6 @@ export default class TerraFirma {
 
   async updateProvider<T extends keyof TilesProviders>(type: T, provider: TilesProviders[T]) {
     await this.tilesManager?.updateProvider(type, provider)
-  }
-
-  getZoomSpeed(altitude: number) {
-    const minSpeed = 1
-    const maxSpeed = 100_000
-    const referenceAltitude = 10_000
-    const referenceSpeed = 1_000
-    const exponent = 1.2
-
-    const speed = referenceSpeed * Math.pow(Math.max(0, altitude) / referenceAltitude, exponent)
-
-    return (this.config.controls.zoomSpeed ?? 1) * Math.min(maxSpeed, Math.max(minSpeed, speed))
   }
 
   setCameraFromPOI(altitude = 10_000) {
@@ -385,7 +372,6 @@ export default class TerraFirma {
     )
 
     this.controls.reset({
-      zoomSpeed: this.getZoomSpeed(altitude),
       position,
       target,
       targetElevation: altitude,

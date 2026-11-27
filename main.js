@@ -3,7 +3,7 @@ import TerraFirma from './src/TerraFirma'
 import { POIs, DEFAULT_POI } from './config/poi'
 import { tilesProviders } from './config/tiles-providers'
 import { TubeGeometry } from './src/geometries/TubeGeometry'
-import { SphereGeometry, Vec3 } from 'gpu-curtains'
+import { ShaderPass, SphereGeometry, Vec3 } from 'gpu-curtains'
 import { everestConfig } from './config/everest-config'
 
 window.addEventListener('load', async () => {
@@ -85,6 +85,75 @@ window.addEventListener('load', async () => {
       pathToEverestMeshes.push(debugMesh)
     })
   })
+
+  //   const toonShaderFs = /* wgsl */ `
+  //     fn luma(c: vec3<f32>) -> f32 {
+  //         return dot(c, vec3<f32>(0.299, 0.587, 0.114));
+  //     }
+  //
+  //     fn sobelEdge(uv: vec2<f32>) -> f32 {
+  //         // let ts = params.texelSize;
+  //         let ts = vec2f(textureDimensions(renderTexture));
+  //
+  //         let tl = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>(-ts.x, -ts.y)).rgb);
+  //         let t  = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>(  0.0, -ts.y)).rgb);
+  //         let tr = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>( ts.x, -ts.y)).rgb);
+  //         let l  = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>(-ts.x,   0.0)).rgb);
+  //         let r  = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>( ts.x,   0.0)).rgb);
+  //         let bl = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>(-ts.x,  ts.y)).rgb);
+  //         let b  = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>(  0.0,  ts.y)).rgb);
+  //         let br = luma(textureSample(renderTexture, defaultSampler, uv + vec2<f32>( ts.x,  ts.y)).rgb);
+  //
+  //         let gx = -tl - 2.0 * l - bl + tr + 2.0 * r + br;
+  //         let gy = -tl - 2.0 * t - tr + bl + 2.0 * b + br;
+  //         return length(vec2<f32>(gx, gy));
+  //     }
+  //
+  //     struct VSOutput {
+  //       @builtin(position) position: vec4f,
+  //       @location(0) uv: vec2f,
+  //     };
+  //
+  //     @fragment fn main(fsInput: VSOutput) -> @location(0) vec4<f32> {
+  //         let color = textureSample(renderTexture, defaultSampler, fsInput.uv).rgb;
+  //
+  //         // 1. Quantize colors into discrete bands
+  //         let quantized = floor(color * params.colorSteps) / params.colorSteps;
+  //
+  //         // 2. Detect edges and blend outline
+  //         let edge = sobelEdge(fsInput.uv);
+  //         let outlineMask = step(params.edgeThreshold, edge);
+  //
+  //         let finalColor = mix(quantized, params.outlineColor, outlineMask);
+  //         return vec4<f32>(finalColor, 1.0);
+  //     }
+  //     `
+
+  // const toonShaderPass = new ShaderPass(terraFirma.renderer, {
+  //   shaders: {
+  //     fragment: {
+  //       code: toonShaderFs,
+  //     },
+  //   },
+  //   uniforms: {
+  //     params: {
+  //       struct: {
+  //         colorSteps: {
+  //           type: 'f32',
+  //           value: 3,
+  //         },
+  //         edgeThreshold: {
+  //           type: 'f32',
+  //           value: 0.25,
+  //         },
+  //         outlineColor: {
+  //           type: 'vec3f',
+  //           value: new Vec3(0.05),
+  //         },
+  //       },
+  //     },
+  //   },
+  // })
 
   // const testPoints = [
   //   {

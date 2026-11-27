@@ -134,8 +134,13 @@ export const POIs = {
   },
   cerroTorre: {
     name: 'Cerro Torre',
-    latitude: -49.28805556,
-    longitude: -73.09611111,
+    latitude: -49.29194,
+    longitude: -73.09923,
+  },
+  alpamayo: {
+    name: 'Alpamayo',
+    latitude: -8.87917,
+    longitude: -77.65367,
   },
   grandCanyon: {
     name: 'Grand Canyon',

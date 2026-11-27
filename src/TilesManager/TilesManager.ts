@@ -408,18 +408,25 @@ export default class TilesManager {
     })
   }
 
-  onIdle() {
-    // TODO
-    // const visibleMeshes = this.renderer.meshes.filter((mesh) => mesh.visible)
-    // const invisibleMeshes = this.renderer.meshes.filter((mesh) => !mesh.visible)
-    // console.log('QUEUE finished', this, visibleMeshes, invisibleMeshes)
+  getStats() {
+    const nbVertices = this.renderer.meshes.reduce((acc, mesh) => {
+      return acc + mesh.geometry.verticesCount
+    }, 0)
 
-    console.log('QUEUE finished', {
-      meshes: this.renderer.meshes.length,
-      textures: this.renderer.textures.length,
-      mapTiles: this.mapTilesManager.mapTiles.size,
-      stats: this.globeLOD.getStats(),
-    })
+    return {
+      nbMeshes: this.renderer.meshes.length,
+      hiddenMeshes: this.renderer.meshes.filter((mesh) => !mesh.visible).length,
+      nbTextures: this.renderer.textures.length,
+      nbElevationTextures: this.elevationTileTextures.size,
+      nbSatelliteTextures: this.satelliteTileTextures.size,
+      nbMapTiles: this.mapTilesManager.mapTiles.size,
+      lodStats: this.globeLOD.getStats(),
+      nbVertices,
+    }
+  }
+
+  onIdle() {
+    console.log('QUEUE finished', this.getStats())
     this.options.onIdle?.()
   }
 

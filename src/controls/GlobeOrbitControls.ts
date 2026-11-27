@@ -1,7 +1,7 @@
 import gsap from 'gsap'
 import { Vec2, Vec3, Quat, PerspectiveCamera, OrthographicCamera } from 'gpu-curtains'
 import { EARTH_RADIUS } from '../config/constants.js'
-import { lerp } from '../utils/maths.js'
+import { lerp, map } from '../utils/maths.js'
 import { getSphericalDistanceFromVec3 } from '../utils/earth-coordinates.js'
 
 // Based on gpu-curtains OrbitControls.
@@ -13,6 +13,7 @@ const inverseQuat = new Quat()
 
 const WORLD_UP = new Vec3(0, 1, 0)
 const GLOBE_ROTATE_SENSITIVITY = 0.0005
+// const GLOBE_ROTATE_SENSITIVITY = 1
 const EPSILON = 0.00001
 
 type Camera = PerspectiveCamera | OrthographicCamera
@@ -111,6 +112,8 @@ export class GlobeOrbitControls {
   #panStart = new Vec2()
   #panDelta = new Vec3()
 
+  #distanceSensitivity = 0
+
   // Reusable quaternions for globe rotation.
   #horizontalRotation = new Quat()
   #verticalRotation = new Quat()
@@ -200,12 +203,28 @@ export class GlobeOrbitControls {
     this.#updateSphericalFromPosition()
 
     this.target.onChange(() => {
+      this.#setDistanceSensitivity()
       if (!this.#isUpdatingTarget) {
         this.#update()
       }
     })
 
     this.#update()
+  }
+
+  #setDistanceSensitivity() {
+    const distance = this.camera.position.distance(this.target)
+
+    const minSpeed = 1
+    const maxSpeed = 200_000
+    const referenceDistance = 10_000
+    const referenceSpeed = 1_000
+    const exponent = 1.1
+
+    const clampedDist = Math.max(1, distance)
+    const speed = referenceSpeed * Math.pow(clampedDist / referenceDistance, exponent)
+
+    this.#distanceSensitivity = Math.min(maxSpeed, Math.max(minSpeed, speed))
   }
 
   /**
@@ -537,6 +556,8 @@ export class GlobeOrbitControls {
     const useDefaultUp = tempVec3.lengthSq() < EPSILON
 
     this.camera.lookAt(this.target, useDefaultUp ? null : this.up)
+
+    this.#setDistanceSensitivity()
   }
 
   /**
@@ -583,10 +604,14 @@ export class GlobeOrbitControls {
   #rotateGlobe(deltaX: number, deltaY: number, height: number) {
     if (height <= 0) return
 
-    const distance = this.camera.position.distance(this.globeTarget)
-    const altitude = Math.max(0, distance - EARTH_RADIUS)
-    const altitudeSensitivity = Math.max(1, altitude / 12_000)
+    // const distance = this.camera.position.distance(this.globeTarget)
+    // const altitude = Math.max(0, distance - EARTH_RADIUS)
+    const distance = this.camera.position.distance(this.target)
+    const altitude = Math.max(0, distance)
+    const altitudeSensitivity = Math.max(1, altitude / 9_000)
     const sensitivity = GLOBE_ROTATE_SENSITIVITY * altitudeSensitivity
+    // console.log(altitudeSensitivity, this.#distanceSensitivity, GLOBE_ROTATE_SENSITIVITY, 1 / EARTH_RADIUS)
+    // const sensitivity = (GLOBE_ROTATE_SENSITIVITY * Math.pow(this.#distanceSensitivity, 1.2)) / EARTH_RADIUS
 
     // const altitudeRatio = altitude / EARTH_RADIUS
     // const sensitivity = GLOBE_ROTATE_SENSITIVITY * Math.pow(1 + altitudeRatio, 10)
@@ -810,7 +835,7 @@ export class GlobeOrbitControls {
 
     const newRadius = Math.min(
       this.maxZoom,
-      Math.max(this.minZoom + EPSILON, prevRadius + (value * this.zoomSpeed) / 100),
+      Math.max(this.minZoom + EPSILON, prevRadius + (value * this.zoomSpeed * this.#distanceSensitivity) / 100),
     )
 
     const minSafePhi = Math.max(this.minPolarAngle, EPSILON)
