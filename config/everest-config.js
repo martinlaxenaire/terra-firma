@@ -1,8 +1,8 @@
 import { Vec3 } from 'gpu-curtains'
 
 export const everestConfig = {
-  campsScale: 35,
-  pathRadius: 15,
+  campsScale: 25,
+  pathRadius: 12.5,
   camps: [
     {
       label: 'Base camp',
@@ -47,10 +47,10 @@ export const everestConfig = {
     {
       label: 'Summit',
       point: {
-        latitude: 27.9881,
-        longitude: 86.925,
+        latitude: 27.987994,
+        longitude: 86.925043,
       },
-      position: new Vec3(5625577.455917968, 2993984.858003757, 302208.6215388728),
+      position: new Vec3(5625588.328736755, 2993977.157626429, 302204.9714911362),
     },
   ],
   paths: [

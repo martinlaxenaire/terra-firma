@@ -30,8 +30,8 @@ export const tileVs = /* wgsl */ `
 
     // apply heightmap
     let elevationUv = (texturesMatrices.elevationTexture.matrix * vec3(attributes.uv, 1.0)).xy;
-    let elevationMap: vec4f = textureSampleLevel(elevationTexture, elevationSampler, elevationUv, 0.0);
 
+    let elevationMap: vec4f = textureSampleLevel(elevationTexture, elevationSampler, elevationUv, 0.0);
     var elevation: f32 = getElevation(elevationMap);
 
     vsOutput.elevation = elevation;
@@ -65,6 +65,7 @@ export const tileVs = /* wgsl */ `
     vsOutput.worldPosition =
         worldPosition.xyz / worldPosition.w;
 
+    // compute aerial scattering and transmittance
     ${getVertexAerialPerspective}
 
     return vsOutput;

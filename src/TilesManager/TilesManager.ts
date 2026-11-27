@@ -33,12 +33,10 @@ export interface TilesManagerBaseConfig {
   maxTileDefinition?: number
   lod?: GlobeLODBaseOptions
   cameraVisibility?: GlobeCameraVisibilityBaseOptions
+  onIdle?: () => void
 }
 
 export interface TilesManagerBaseOptions {
-  useSunLight?: boolean
-  useSunShadows?: boolean
-  useFog?: boolean
   useWorkers?: boolean
   poi: POI
   providers: TilesProviders
@@ -46,7 +44,6 @@ export interface TilesManagerBaseOptions {
   parent: Object3D
   onPOIAltitude: (altitude: number) => void
   onCameraUpdate: (altitude: number) => void
-  onMapComplete?: () => void
   onIdle?: () => void
 }
 
@@ -54,9 +51,6 @@ export interface TilesManagerOptions extends NonNullable<TilesManagerBaseConfig>
 
 interface TilesManagerState {
   isIdling: boolean
-  sunLight: boolean
-  sunShadows: boolean
-  fog: boolean
   debugZoom: boolean
   debugElevation: boolean
   // lercLoaded: boolean
@@ -101,9 +95,6 @@ export default class TilesManager {
     this.renderer = this.terraFirma.renderer
 
     const defaultOptions = {
-      useSunLight: true,
-      useSunShadows: true,
-      useFog: true,
       useWorkers: false,
       poi: {
         latitude: 0,
@@ -112,7 +103,6 @@ export default class TilesManager {
       parent: null,
       onPOIAltitude: (_altitude: number) => {},
       onCameraUpdate: (_altitude: number) => {},
-      onMapComplete: () => {},
       onIdle: () => {},
     }
 
@@ -122,12 +112,8 @@ export default class TilesManager {
 
     this.state = {
       isIdling: false,
-      sunLight: this.options.useSunLight ?? true,
-      sunShadows: this.options.useSunShadows ?? true,
-      fog: this.options.useFog ?? false,
       debugZoom: false,
       debugElevation: false,
-      // lercLoaded: false,
       ready: false,
       paused: false,
     }
@@ -256,7 +242,7 @@ export default class TilesManager {
         //
 
         const currentTargetElevation = this.getCurrentTargetElevation()
-        this.terraFirma.orbitControls?.setCurrentElevation(currentTargetElevation)
+        this.terraFirma.controls?.setCurrentElevation(currentTargetElevation)
       },
     })
   }
@@ -275,7 +261,7 @@ export default class TilesManager {
 
   setGlobeCameraVisibility() {
     this.globeCameraVisibility = new GlobeCameraVisibility(this.renderer.camera, {
-      edgeSamples: 16,
+      ...this.options.cameraVisibility,
       onUpdate: (result) => {
         this.globeLOD.update(result)
         const altitude = this.globeCameraVisibility.altitude
@@ -404,22 +390,6 @@ export default class TilesManager {
     }
 
     return 0
-  }
-
-  setFog(useFog = true) {
-    this.state.fog = useFog
-
-    this.mapTilesManager.mapTiles.forEach((tile) => {
-      tile.tileMesh?.setFog(this.state.fog)
-    })
-  }
-
-  setSunLight(sunLight = true) {
-    this.state.sunLight = sunLight
-  }
-
-  setSunShadows(sunShadows = true) {
-    this.state.sunShadows = sunShadows
   }
 
   setDebugZoom(debugZoom = false) {

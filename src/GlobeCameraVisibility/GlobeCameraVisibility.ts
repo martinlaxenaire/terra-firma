@@ -1,4 +1,4 @@
-import { GPUCameraRenderer, Vec3, Vec2 } from 'gpu-curtains'
+import { GPUCameraRenderer, Vec3, Vec2, RendererCamera } from 'gpu-curtains'
 import { DEG2RAD, EARTH_RADIUS } from '../config/constants.js'
 import { GeographicCoordinates } from '../types/geographic.js'
 import { globeToMercatorLatitude } from '../utils/earth-coordinates.js'
@@ -23,7 +23,7 @@ export interface GlobeCameraVisibilityOptions
   extends GlobeCameraVisibilityBaseOptions, GlobeCameraVisibilityInternalOptions {}
 
 export class GlobeCameraVisibility {
-  readonly camera: GPUCameraRenderer['camera']
+  readonly camera: RendererCamera
 
   private readonly earthRadius: number
   private readonly edgeSamples: number
@@ -40,7 +40,7 @@ export class GlobeCameraVisibility {
   private updatingClippingPlanes = false
 
   constructor(
-    private readonly camera: GPUCameraRenderer['camera'],
+    private readonly camera: RendererCamera,
     options: GlobeCameraVisibilityOptions,
   ) {
     this.camera = camera

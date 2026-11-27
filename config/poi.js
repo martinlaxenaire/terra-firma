@@ -6,8 +6,8 @@ export const POIs = {
     name: 'Everest',
     //latitude: 27.9881296,
     //longitude: 86.9205977,
-    latitude: 27.9881,
-    longitude: 86.925,
+    latitude: 27.987994,
+    longitude: 86.925043,
     //altitude: 8848,
   },
   k2: {

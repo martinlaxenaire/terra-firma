@@ -9,13 +9,13 @@ import {
   BufferBinding,
 } from 'gpu-curtains'
 import { GPUCameraRendererParams, LitMeshParameters } from 'gpu-curtains'
-import { GlobeOrbitControls } from './controls/GlobeOrbitControls.js'
+import { GlobeOrbitControls, GlobeOrbitControlsBaseParams } from './controls/GlobeOrbitControls.js'
 
 import TilesManager from './TilesManager/TilesManager.js'
 import type { POI, TilesManagerBaseConfig, TilesManagerBaseOptions } from './TilesManager/TilesManager.js'
 
 // only for gui
-import { defaultTilesConfig, defaultTilesProviders } from './config/config.js'
+import { defaultTilesConfig } from './config/config.js'
 import { EARTH_RADIUS } from './config/constants.js'
 import { lonLatOffsetToWorld, lonLatToWorld } from './utils/earth-coordinates.js'
 import { TilesProviders } from './types/providers.js'
@@ -27,27 +27,28 @@ import { getVertexAerialPerspective } from './shaders/chunks/get-vertex-aerial-p
 import { applyLightingFeatures, declareLightingFeatures } from './shaders/chunks/apply-lighting-features.js'
 
 export interface TerraFirmaBaseOptions extends TilesManagerBaseConfig {
-  renderer: Omit<
+  renderer?: Omit<
     GPUCameraRendererParams,
     'camera' | 'deviceManager' | 'container' | 'autoResize' | 'context' | 'renderPass'
   >
+  controls?: Omit<GlobeOrbitControlsBaseParams, 'target' | 'targetElevation' | 'up'>
+  cameraOffset?: Partial<GlobeOffset>
+  useFog?: boolean
+  useSky?: boolean
+  useWorkers?: boolean
 }
 
 export interface TerraFirmaOptions extends Omit<TerraFirmaBaseOptions, 'providers'> {
   container: string | HTMLElement
   poi: POI
   providers?: TilesProviders
-  useFog?: boolean
-  useSky?: boolean
-  useWorkers?: boolean
-  cameraOffset?: Partial<GlobeOffset>
   currentDate?: Date
 }
 
 export default class TerraFirma {
   options: NonNullable<TerraFirmaOptions>
 
-  config!: TerraFirmaBaseOptions
+  config!: NonNullable<TerraFirmaBaseOptions>
   tilesManager!: TilesManager
 
   dpr!: number
@@ -55,15 +56,9 @@ export default class TerraFirma {
   renderer!: GPUCameraRenderer
   scene!: GPUCameraRenderer['scene']
   camera!: GPUCameraRenderer['camera']
-  orbitControls!: GlobeOrbitControls
+  controls!: GlobeOrbitControls
 
   poi!: POI
-
-  fog!: {
-    color: Vec3
-    near: number
-    far: number
-  }
 
   sun!: DirectionalLight
   sky: Sky | undefined
@@ -78,14 +73,6 @@ export default class TerraFirma {
 
   constructor(options: TerraFirmaOptions) {
     this.options = options
-    this.options.providers = options.providers ?? defaultTilesProviders
-    this.options.useFog = options.useFog ?? true
-    this.options.useSky = options.useSky ?? true
-    this.options.useWorkers = options.useWorkers ?? false
-    const defaultCameraOffset = { north: -4_000, west: 0, altitude: 2_000 }
-    this.options.cameraOffset = (
-      options.cameraOffset ? { ...defaultCameraOffset, ...options.cameraOffset } : defaultCameraOffset
-    ) as GlobeOffset
 
     this.customMeshes = []
 
@@ -99,6 +86,8 @@ export default class TerraFirma {
             longitude: 0,
           },
     )
+
+    console.log(this)
   }
 
   async init() {
@@ -106,8 +95,6 @@ export default class TerraFirma {
 
     this.createMaterialBindings()
     this.setSky()
-
-    this.setFog()
 
     this.initTilesManager()
   }
@@ -134,13 +121,13 @@ export default class TerraFirma {
 
           // Offset around POI.
           const newPosition = newTarget.clone().add(
-            lonLatOffsetToWorld(this.options.cameraOffset as GlobeOffset, {
+            lonLatOffsetToWorld(this.config.cameraOffset as GlobeOffset, {
               longitude,
               latitude,
             }),
           )
 
-          this.orbitControls?.flyTo({
+          this.controls?.flyTo({
             position: newPosition,
             target: newTarget,
             ...(animation && typeof animation === 'object' && { duration: animation.duration }),
@@ -175,8 +162,38 @@ export default class TerraFirma {
   }
 
   setConfig() {
-    const { container, useFog, cameraOffset, currentDate, ...baseOptions } = this.options
-    this.config = { ...defaultTilesConfig, ...baseOptions }
+    const {
+      container,
+      renderer: rendererOptions,
+      controls: controlsOptions,
+      cameraOffset: cameraOffsetOptions,
+      useFog,
+      useSky,
+      useWorkers,
+      ...baseOptions
+    } = this.options
+
+    const {
+      renderer: rendererDefault,
+      controls: controlsDefault,
+      cameraOffset: cameraOffsetDefault,
+      ...defaultConfig
+    } = defaultTilesConfig
+
+    const renderer = { ...rendererDefault, ...rendererOptions }
+    const controls = { ...controlsDefault, ...controlsOptions }
+    const cameraOffset = { ...cameraOffsetDefault, ...cameraOffsetOptions }
+
+    this.config = {
+      ...defaultConfig,
+      ...baseOptions,
+      renderer,
+      controls,
+      cameraOffset,
+      useSky: useSky ?? true,
+      useFog: useFog ?? true,
+      useWorkers: useWorkers ?? false,
+    }
   }
 
   async setRenderer() {
@@ -213,12 +230,10 @@ export default class TerraFirma {
     this.scene = this.renderer.scene
     this.camera = this.renderer.camera
 
-    this.orbitControls = new GlobeOrbitControls({
+    this.controls = new GlobeOrbitControls({
       camera: this.camera,
       element: this.renderer!.domElement!.element,
-      maxZoom: EARTH_RADIUS * 2,
-      maxPolarAngle: Math.PI * 0.75,
-      minPolarAngle: 0.01,
+      ...this.config.controls,
     })
 
     this.sun = new DirectionalLight(this.renderer, {
@@ -286,7 +301,7 @@ export default class TerraFirma {
         },
         useFog: {
           type: 'u32',
-          value: this.options.useFog ? 1 : 0,
+          value: this.config.useFog ? 1 : 0,
         },
       },
     })
@@ -299,11 +314,8 @@ export default class TerraFirma {
   }
 
   initTilesManager() {
-    console.log(this)
-
     const basicOptions: TilesManagerBaseOptions = {
-      useFog: this.options.useFog ?? false,
-      useWorkers: this.options.useWorkers ?? false,
+      useWorkers: this.config.useWorkers,
       parent: this.scene,
       poi: this.poi,
       providers: this.config.providers,
@@ -311,15 +323,11 @@ export default class TerraFirma {
         this.setCameraFromPOI(altitude)
       },
       onCameraUpdate: (altitude: number) => {
-        this.orbitControls.zoomSpeed = this.getZoomSpeed(altitude)
+        this.controls.zoomSpeed = this.getZoomSpeed(altitude)
         this.sky?.updateCameraProjection()
       },
-      onMapComplete: () => {
-        console.log('MAP COMPLETE!', this.tilesManager)
-        console.log('NB OF TILES', this.tilesManager.mapTilesManager.mapTiles.size)
-      },
       onIdle: () => {
-        // TODO
+        this.config?.onIdle()
       },
     }
 
@@ -341,7 +349,7 @@ export default class TerraFirma {
 
     const speed = referenceSpeed * Math.pow(Math.max(0, altitude) / referenceAltitude, exponent)
 
-    return Math.min(maxSpeed, Math.max(minSpeed, speed))
+    return (this.config.controls.zoomSpeed ?? 1) * Math.min(maxSpeed, Math.max(minSpeed, speed))
   }
 
   setCameraFromPOI(altitude = 10_000) {
@@ -357,15 +365,14 @@ export default class TerraFirma {
 
     // Offset around POI.
     const position = target.clone().add(
-      lonLatOffsetToWorld(this.options.cameraOffset as GlobeOffset, {
+      lonLatOffsetToWorld(this.config.cameraOffset as GlobeOffset, {
         longitude,
         latitude,
       }),
     )
 
-    this.orbitControls.reset({
-      zoomSpeed: (EARTH_RADIUS + altitude) * 0.001,
-      minZoom: 100, // meters above POI
+    this.controls.reset({
+      zoomSpeed: this.getZoomSpeed(altitude),
       position,
       target,
       targetElevation: altitude,
@@ -373,10 +380,10 @@ export default class TerraFirma {
     })
   }
 
-  setCamera({ position = this.camera.position, target = this.orbitControls.target }: { position: Vec3; target: Vec3 }) {
+  setCamera({ position = this.camera.position, target = this.controls.target }: { position: Vec3; target: Vec3 }) {
     const up = target.clone().normalize()
 
-    this.orbitControls.reset({
+    this.controls.reset({
       position,
       target,
       up,
@@ -532,33 +539,23 @@ export default class TerraFirma {
   }
 
   useSunLight(useSunLight = true) {
-    // this.tilesManager?.setSunLight(useSunLight)
     this.bindings.features.inputs.useSunLight.value = useSunLight ? 1 : 0
   }
 
   useSunShadows(useSunShadows = true) {
-    // this.tilesManager?.setSunShadows(useSunShadows)
     this.bindings.features.inputs.useSunShadows.value = useSunShadows ? 1 : 0
   }
 
   useSky(useSky = true) {
-    this.options.useSky = useSky
+    this.config.useSky = useSky
     if (this.sky) {
-      this.sky.mesh.visible = this.options.useSky
+      this.sky.mesh.visible = this.config.useSky
     }
   }
 
   useFog(useFog = false) {
-    // this.tilesManager?.setFog(useFog)
-    this.bindings.features.inputs.useFog.value = useFog ? 1 : 0
-  }
-
-  setFog() {
-    this.fog = {
-      color: new Vec3(1),
-      near: 0,
-      far: 150_000,
-    }
+    this.config.useFog = useFog
+    this.bindings.features.inputs.useFog.value = this.config.useFog ? 1 : 0
   }
 
   render() {

@@ -1,5 +1,6 @@
 import { TerraFirmaBaseOptions } from '../TerraFirma.js'
 import { TilesProviders } from '../types/providers.js'
+import { EARTH_RADIUS } from './constants.js'
 
 export const defaultTilesProviders: TilesProviders = {
   elevation: {
@@ -40,4 +41,17 @@ export const defaultTilesConfig: TerraFirmaBaseOptions = {
       maxSpotLights: 0,
     },
   },
+  controls: {
+    minZoom: 200,
+    maxZoom: EARTH_RADIUS * 2,
+    zoomSpeed: 1,
+    maxPolarAngle: Math.PI * 0.75,
+    minPolarAngle: 0.01,
+  },
+  cameraOffset: {
+    north: -4_000,
+    west: 0,
+    altitude: 2_000,
+  },
+  onIdle: () => {},
 }

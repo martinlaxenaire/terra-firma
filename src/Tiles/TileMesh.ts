@@ -231,14 +231,6 @@ export default class TileMesh {
               type: 'f32',
               value: 0,
             },
-            fogNear: {
-              type: 'f32',
-              value: this.tilesManager.terraFirma.fog.near,
-            },
-            fogFar: {
-              type: 'f32',
-              value: this.tilesManager.terraFirma.fog.far,
-            },
           },
         },
         debug: {
@@ -260,29 +252,36 @@ export default class TileMesh {
       },
     })
 
-    this.mesh.onBeforeRender(() => {
-      if (
-        !this.ready &&
-        !this.readyCallbackRegistered &&
-        this.mesh?.ready &&
-        this.elevationTexture?.sourcesUploaded &&
-        this.satelliteTexture?.sourcesUploaded
-      ) {
-        this.readyCallbackRegistered = true
+    this.mesh
+      .onBeforeRender(() => {
+        if (
+          !this.ready &&
+          !this.readyCallbackRegistered &&
+          this.mesh?.ready &&
+          this.elevationTexture?.sourcesUploaded &&
+          this.satelliteTexture?.sourcesUploaded
+        ) {
+          this.readyCallbackRegistered = true
 
-        this.renderer.onBeforeRenderScene.add(
-          () => {
-            this.ready = true
-            this.setGlobalOpacity(1)
-            this.onMeshReady()
-          },
-          { once: true },
-        )
-      } else if (this.ready && (!this.elevationTexture?.texture || !this.satelliteTexture?.texture)) {
-        // avoid rendering a tile mesh is one of the texture has been destroyed
-        this.setVisibility(false)
-      }
-    })
+          this.renderer.onBeforeRenderScene.add(
+            () => {
+              this.ready = true
+              this.setGlobalOpacity(1)
+              this.onMeshReady()
+            },
+            { once: true },
+          )
+        }
+      })
+      .onRender(() => {
+        if (
+          this.ready &&
+          (!this.elevationTexture?.options.fromTexture.texture || !this.satelliteTexture?.options.fromTexture.texture)
+        ) {
+          // avoid rendering a tile mesh is one of the texture has been destroyed
+          this.setVisibility(false)
+        }
+      })
 
     this.mesh.parent = this.parent
   }
@@ -298,14 +297,6 @@ export default class TileMesh {
   setGlobalOpacity(opacity = 0) {
     if (this.mesh) {
       this.mesh.uniforms.params.globalOpacity.value = opacity
-    }
-  }
-
-  setFog(useFog = true) {
-    if (this.mesh) {
-      this.mesh.uniforms.params.useFog.value = useFog ? 1 : 0
-      this.mesh.uniforms.params.fogNear.value = this.tilesManager.terraFirma.fog.near
-      this.mesh.uniforms.params.fogFar.value = this.tilesManager.terraFirma.fog.far
     }
   }
 

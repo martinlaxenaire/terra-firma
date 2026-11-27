@@ -18,10 +18,10 @@ const EPSILON = 0.00001
 type Camera = PerspectiveCamera | OrthographicCamera
 
 /** Defines the base parameters used to set / reset GlobeOrbitControls. */
-export interface OrbitControlsBaseParams {
+export interface GlobeOrbitControlsBaseParams {
   /** The focus point of the controls. */
   target?: Vec3
-
+  /** Current target elevation. */
   targetElevation?: number
 
   /** Whether to allow zooming. */
@@ -54,7 +54,7 @@ export interface OrbitControlsBaseParams {
   panSpeed?: number
 }
 
-export interface OrbitControlsParams extends OrbitControlsBaseParams {
+export interface GlobeOrbitControlsParams extends GlobeOrbitControlsBaseParams {
   camera?: Camera
   element?: HTMLElement | Window
 }
@@ -151,7 +151,7 @@ export class GlobeOrbitControls {
 
     enablePan = true,
     panSpeed = 1,
-  }: OrbitControlsParams) {
+  }: GlobeOrbitControlsParams) {
     if (!camera) {
       throw new Error('GlobeOrbitControls requires a camera.')
     }
@@ -229,7 +229,7 @@ export class GlobeOrbitControls {
 
     enablePan = this.enablePan,
     panSpeed = this.panSpeed,
-  }: OrbitControlsBaseParams = {}) {
+  }: GlobeOrbitControlsBaseParams = {}) {
     if (target) {
       this.target = target
     }
@@ -284,7 +284,7 @@ export class GlobeOrbitControls {
 
     enablePan = this.enablePan,
     panSpeed = this.panSpeed,
-  }: { position?: Vec3 } & OrbitControlsBaseParams = {}) {
+  }: { position?: Vec3 } & GlobeOrbitControlsBaseParams = {}) {
     this.#setBaseParams({
       target,
       targetElevation,

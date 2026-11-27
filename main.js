@@ -33,6 +33,7 @@ window.addEventListener('load', async () => {
 
   await terraFirma.init()
 
+  const pathToEverestMeshes = []
   const sphereGeometry = new SphereGeometry()
 
   everestConfig.camps.forEach((camp) => {
@@ -47,6 +48,8 @@ window.addEventListener('load', async () => {
 
     campMesh.scale.set(everestConfig.campsScale)
     campMesh.position.copy(camp.position)
+
+    pathToEverestMeshes.push(campMesh)
   })
 
   everestConfig.paths.forEach((path, index) => {
@@ -55,7 +58,7 @@ window.addEventListener('load', async () => {
       radius: everestConfig.pathRadius,
     })
 
-    terraFirma.addLitMesh({
+    const pathMesh = terraFirma.addLitMesh({
       label: path.label,
       geometry: pathGeometry,
       material: {
@@ -63,6 +66,8 @@ window.addEventListener('load', async () => {
         shading: 'Unlit',
       },
     })
+
+    pathToEverestMeshes.push(pathMesh)
 
     // degug paths positions
     path.positions.forEach((position) => {
@@ -76,31 +81,20 @@ window.addEventListener('load', async () => {
 
       debugMesh.scale.set(everestConfig.pathRadius * 1.25)
       debugMesh.position.copy(position)
+
+      pathToEverestMeshes.push(debugMesh)
     })
   })
 
-  //   everestConfig.paths[4].positions.forEach((position) => {
-  //     const campMesh = terraFirma.addLitMesh({
-  //       geometry: sphereGeometry,
-  //       material: {
-  //         color: new Vec3(0, 1, 0),
-  //         shading: 'Unlit',
-  //       },
-  //     })
-  //
-  //     campMesh.scale.set(everestConfig.campsScale * 0.25)
-  //     campMesh.position.copy(position)
-  //   })
-
-  const testPoints = [
-    {
-      latitude: 27.987619,
-      longitude: 86.925206,
-    },
-  ]
-  const testPathPoints = Promise.all(testPoints.map((point) => terraFirma.getPoint3DPosition(point))).then((points) => {
-    points.forEach((point) => console.log(`new Vec3(${point.x}, ${point.y}, ${point.z}),`))
-  })
+  // const testPoints = [
+  //   {
+  //     latitude: 27.987994,
+  //     longitude: 86.925043,
+  //   },
+  // ]
+  // const testPathPoints = Promise.all(testPoints.map((point) => terraFirma.getPoint3DPosition(point))).then((points) => {
+  //   points.forEach((point) => console.log(`new Vec3(${point.x}, ${point.y}, ${point.z}),`))
+  // })
 
   const gui = new GUI()
   //gui.close()
@@ -131,10 +125,17 @@ window.addEventListener('load', async () => {
     })
     .name('Use sun shadows')
 
+  mapFolder
+    .add({ showPathToEverest: true }, 'showPathToEverest')
+    .onChange((value) => {
+      pathToEverestMeshes.forEach((mesh) => (mesh.visible = value))
+    })
+    .name('Show Everest route')
+
   const skyFolder = mapFolder.addFolder('Sky')
 
   skyFolder
-    .add({ useSky: terraFirma.options.useSky }, 'useSky')
+    .add({ useSky: terraFirma.config.useSky }, 'useSky')
     .onChange((value) => {
       terraFirma.useSky(value)
     })
@@ -143,7 +144,7 @@ window.addEventListener('load', async () => {
   skyFolder.add(terraFirma.sky.mesh.uniforms.params.viewSamples, 'value', 2, 20, 1).name('View samples')
 
   mapFolder
-    .add({ useFog: terraFirma.options.useFog }, 'useFog')
+    .add({ useFog: terraFirma.config.useFog }, 'useFog')
     .onChange((value) => {
       terraFirma.useFog(value)
     })
@@ -157,6 +158,7 @@ window.addEventListener('load', async () => {
   })
 
   const debugFolder = gui.addFolder('Debug')
+  debugFolder.close()
 
   debugFolder
     .add({ debugZoom: false }, 'debugZoom')
