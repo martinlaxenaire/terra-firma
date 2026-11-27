@@ -24,7 +24,7 @@ window.addEventListener('load', async () => {
     //   north: 0,
     //   altitude: 10_000_000,
     // },
-    // currentDate: new Date('2026-06-21T12:00:00'),
+    // currentDate: new  Date('2026-06-21T12:00:00'),
     // renderer: {
     //   lights: false,
     // },
@@ -112,25 +112,36 @@ window.addEventListener('load', async () => {
     .name('POI')
 
   mapFolder
+    .add({ showPathToEverest: true }, 'showPathToEverest')
+    .onChange((value) => {
+      pathToEverestMeshes.forEach((mesh) => (mesh.visible = value))
+    })
+    .name('Show Everest route')
+
+  const dayCycleFolder = mapFolder.addFolder('Day/night')
+
+  dayCycleFolder
     .add({ useSunLight: terraFirma.config.useSunLight }, 'useSunLight')
     .onChange((value) => {
       terraFirma.useSunLight(value)
     })
     .name('Use sunlight')
 
-  mapFolder
+  dayCycleFolder
     .add({ useSunShadows: terraFirma.config.useSunShadows }, 'useSunShadows')
     .onChange((value) => {
       terraFirma.useSunShadows(value)
     })
     .name('Use sun shadows')
 
-  mapFolder
-    .add({ showPathToEverest: true }, 'showPathToEverest')
+  dayCycleFolder
+    .add({ hourOffset: 0 }, 'hourOffset', -12, 12, 0.01)
     .onChange((value) => {
-      pathToEverestMeshes.forEach((mesh) => (mesh.visible = value))
+      const now = new Date()
+      const newDate = new Date(now.getTime() + value * 60 * 60 * 1000)
+      terraFirma.setCurrentDate(newDate)
     })
-    .name('Show Everest route')
+    .name('Hour offset')
 
   const skyFolder = mapFolder.addFolder('Sky')
 

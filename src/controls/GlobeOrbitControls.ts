@@ -402,10 +402,22 @@ export class GlobeOrbitControls {
     this.#element?.removeEventListener('mousedown', this.#_onMouseDown as EventListener, false)
     this.#element?.removeEventListener('mousemove', this.#_onMouseMove as EventListener, false)
     this.#element?.removeEventListener('mouseup', this.#_onMouseUp as EventListener, false)
-    this.#element?.removeEventListener('touchstart', this.#_onTouchStart as EventListener, { passive: false })
-    this.#element?.removeEventListener('touchmove', this.#_onTouchMove as EventListener, { passive: false })
+    this.#element?.removeEventListener(
+      'touchstart',
+      this.#_onTouchStart as EventListener,
+      { passive: false } as EventListenerOptions,
+    )
+    this.#element?.removeEventListener(
+      'touchmove',
+      this.#_onTouchMove as EventListener,
+      { passive: false } as EventListenerOptions,
+    )
     this.#element?.removeEventListener('touchend', this.#_onTouchEnd as EventListener, false)
-    this.#element?.removeEventListener('wheel', this.#_onMouseWheel as EventListener, { passive: false })
+    this.#element?.removeEventListener(
+      'wheel',
+      this.#_onMouseWheel as EventListener,
+      { passive: false } as EventListenerOptions,
+    )
   }
 
   #onMouseDown(e: MouseEvent) {

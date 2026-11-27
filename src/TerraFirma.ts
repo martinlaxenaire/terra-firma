@@ -38,6 +38,7 @@ export interface TerraFirmaBaseOptions extends TilesManagerBaseConfig {
   useSunLight?: boolean
   useSunShadows?: boolean
   useWorkers?: boolean
+  currentDate?: Date
   fog?: {
     dayIntensity?: number
     nightIntensity?: number
@@ -48,7 +49,6 @@ export interface TerraFirmaOptions extends Omit<TerraFirmaBaseOptions, 'provider
   container: string | HTMLElement
   poi: POI
   providers?: TilesProviders
-  currentDate?: Date
 }
 
 export default class TerraFirma {
@@ -79,6 +79,7 @@ export default class TerraFirma {
 
   constructor(options: TerraFirmaOptions) {
     this.options = options
+    this.options.currentDate = options.currentDate
 
     this.customMeshes = []
 
@@ -540,14 +541,16 @@ export default class TerraFirma {
   }
 
   setSky() {
-    this.getRealTimeSunPositionECEF(this.sun.position, this.options.currentDate)
+    this.config.currentDate = new Date()
+    this.getRealTimeSunPositionECEF(this.sun.position, this.options.currentDate ?? this.config.currentDate)
     this.sky = new Sky(this)
     this.useSky(this.options.useSky)
   }
 
   setCurrentDate(date = new Date()) {
     this.options.currentDate = date
-    this.getRealTimeSunPositionECEF(this.sun.position, this.options.currentDate)
+    this.config.currentDate = date
+    this.getRealTimeSunPositionECEF(this.sun.position, this.config.currentDate)
   }
 
   useSunLight(useSunLight = true) {
@@ -582,7 +585,8 @@ export default class TerraFirma {
 
   render() {
     if (!this.options.currentDate && this.sun) {
-      this.getRealTimeSunPositionECEF(this.sun.position)
+      this.config.currentDate = new Date()
+      this.getRealTimeSunPositionECEF(this.sun.position, this.config.currentDate)
     }
 
     if (this.tilesManager) {
